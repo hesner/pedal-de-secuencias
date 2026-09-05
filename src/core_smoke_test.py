@@ -55,7 +55,14 @@ def main():
     parser.add_argument("--track", required=True)
     args = parser.parse_args()
 
-    player = Player(standby_path=args.standby, socket_path="/tmp/pedal-smoke-test.sock")
+    # Fallback path is irrelevant here since --standby always exists in
+    # this test -- pointing it at a path that doesn't exist is fine, it's
+    # simply never used.
+    player = Player(
+        standby_path=args.standby,
+        fallback_standby_path="/nonexistent/fallback.mp4",
+        socket_path="/tmp/pedal-smoke-test.sock",
+    )
     player.start()
     time.sleep(1)
 

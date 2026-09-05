@@ -35,6 +35,17 @@ def parse_args():
         help="Path to the standby video (looped when nothing is playing)",
     )
     parser.add_argument(
+        "--fallback-standby",
+        default=os.path.expanduser("~/pedal-assets/fallback-standby.mp4"),
+        help=(
+            "Path to a local (non-USB) standby video, used automatically "
+            "whenever --standby isn't currently reachable (library USB not "
+            "inserted, or removed while running). Generate it with "
+            "scripts/generate_fallback_standby.sh. "
+            "(default: ~/pedal-assets/fallback-standby.mp4)"
+        ),
+    )
+    parser.add_argument(
         "--log-file",
         default=os.path.expanduser("~/pedal-core.log"),
         help="Where to write the Core's log (default: ~/pedal-core.log)",
@@ -57,7 +68,7 @@ def main():
 
     mapper = Mapper(tracks_per_group=4)
     library = Library(usb_root=args.usb_root)
-    player = Player(standby_path=args.standby)
+    player = Player(standby_path=args.standby, fallback_standby_path=args.fallback_standby)
     audio_player = AudioPlayer()
     core = Core(library=library, player=player, audio_player=audio_player)
     core.start()

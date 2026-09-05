@@ -1,0 +1,4 @@
+# This project targets Linux (Raspberry Pi) exclusively, even though it's
+# developed on Windows -- force LF line endings for everything so a shell
+# script's shebang line never gets silently broken by a CRLF checkout.
+* text=auto eol=lf
