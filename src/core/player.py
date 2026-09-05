@@ -24,12 +24,18 @@ it either calls `Player.play()` (video clip) or `AudioPlayer.play()`
 (audio-only), while making sure the *other* lane is in its idle state
 (video lane on standby, or audio lane silent).
 
-Assumption worth documenting: standby.mp4 is authored with no meaningful
-audio of its own (silence, or negligible ambient sound), so it playing
-at the same time as the audio-only lane's real content is not expected to
-clash. If that assumption turns out to be wrong in practice, the video
-lane's audio track would need to be explicitly muted while the audio-only
-lane is active.
+The video lane's audio track is explicitly disabled (aid=no) whenever
+it's showing standby (see Player.go_to_standby()) and re-enabled whenever
+it's playing a real clip (Player.play()) -- standby is meant to be a
+silent visual loop, so this is enforced rather than just assumed about
+how standby.mp4 happens to be authored. Disabling the track outright,
+not just muting it, also matters for a second reason found in practice:
+a muted-but-still-decoding audio stream still opens its own client on
+the shared ALSA `dmix` device (TESTING.md already flagged dmix as
+sensitive to more than one simultaneous producer), which caused audible
+crackling whenever an audio-only track played at the same time. With the
+track fully disabled during standby, dmix only ever has one real producer
+at a time.
 
 Known limitation (documented, not fixed): if a track finishes playing on
 its own (natural end-of-file) at almost the exact same instant a new
@@ -54,6 +60,15 @@ logger = logging.getLogger(__name__)
 
 _CONNECT_TIMEOUT_S = 5.0
 _CONNECT_RETRY_INTERVAL_S = 0.1
+
+# Both lanes are forced to output audio at this fixed rate/layout,
+# regardless of each source file's own format (see the note in Player.__init__
+# and AudioPlayer.__init__): real setlist files were measured at 44100Hz
+# while standby.mp4's audio was 48000Hz, and every switch between the two
+# rates forced ALSA's shared `dmix` device to renegotiate -- audible as a
+# crackle right at the start of a track. mpv resamples internally to this
+# rate before handing audio to ALSA, so dmix's format never changes.
+_FIXED_AUDIO_SAMPLE_RATE = 48000
 
 
 class _MpvProcess:
@@ -185,8 +200,16 @@ class Player:
                 "--gpu-context=drm",
                 "--vo=gpu",
                 f"--audio-device={audio_device}",
+                f"--audio-samplerate={_FIXED_AUDIO_SAMPLE_RATE}",
+                "--audio-channels=stereo",
             ],
         )
+        # Tracks whether standby is already the thing playing, so
+        # go_to_standby() can be called freely (on every STOP, every
+        # audio-only track selection, etc.) without restarting the loop
+        # from position 0 each time it's already showing -- see the note
+        # on go_to_standby() below.
+        self._on_standby = False
 
     @property
     def socket_path(self) -> str:
@@ -216,14 +239,40 @@ class Player:
         song from the beginning (approved behavior)."""
         self._mpv.send({"command": ["loadfile", path, "replace"]})
         self._mpv.send({"command": ["set_property", "loop-file", "no"]})
+        self._mpv.send({"command": ["set_property", "aid", "auto"]})
+        self._on_standby = False
 
     def go_to_standby(self):
         """Immediate, highest-priority action -- returns to the looping
         standby video. Used for the abstract STOP action, automatically
         when a video clip finishes playing on its own, and whenever an
-        audio-only track is selected (see AudioPlayer)."""
+        audio-only track is selected (see AudioPlayer).
+
+        A no-op if standby is already showing: the Core calls this
+        defensively before every audio-only track (to make sure the video
+        lane isn't mid-clip), and on every STOP -- without this guard,
+        each of those calls would reissue 'loadfile standby.mp4 replace'
+        and visibly restart the loop from position 0, even though nothing
+        actually needed to change. This was caught by ear: the standby
+        video was visibly jumping back to its start on every single
+        footswitch press.
+
+        The standby video's audio track is fully disabled (aid=no), not
+        just muted: standby is meant to be a silent visual loop, and a
+        muted-but-still-decoding audio stream was found to open a second
+        simultaneous ALSA client on the shared `dmix` device (TESTING.md
+        already flagged dmix as sensitive to more than one producer at
+        once) -- causing audible crackling whenever an audio-only track
+        played at the same time. Fully disabling the track means dmix
+        only ever has one real producer at a time: either a video clip's
+        own embedded audio, or the AudioPlayer lane's track -- never
+        both."""
+        if self._on_standby:
+            return
         self._mpv.send({"command": ["loadfile", self.standby_path, "replace"]})
         self._mpv.send({"command": ["set_property", "loop-file", "inf"]})
+        self._mpv.send({"command": ["set_property", "aid", "no"]})
+        self._on_standby = True
 
 
 class AudioPlayer:
@@ -240,7 +289,12 @@ class AudioPlayer:
     ):
         self._mpv = _MpvProcess(
             socket_path=socket_path,
-            extra_args=["--vid=no", f"--audio-device={audio_device}"],
+            extra_args=[
+                "--vid=no",
+                f"--audio-device={audio_device}",
+                f"--audio-samplerate={_FIXED_AUDIO_SAMPLE_RATE}",
+                "--audio-channels=stereo",
+            ],
         )
 
     @property
