@@ -1,4 +1,4 @@
-# Configuración/memoria local de Claude Code -- no debe publicarse
+# Local Claude Code config/memory -- must not be published
 .claude/
 
 # Python
@@ -6,8 +6,8 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
-# Archivos de prueba generados durante las pruebas de hardware (grandes,
-# no son parte del código fuente del proyecto)
+# Test files generated during hardware testing (large, not part of the
+# project's source code)
 *.mp4
 *.mp3
 *.wav
@@ -16,6 +16,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Material propietario del fabricante (no es nuestro para redistribuir en
-# un repo open source) -- el análisis relevante ya vive en MAVAVE_ANALYSIS.md
+# Manufacturer proprietary material (not ours to redistribute in an open
+# source repo) -- the relevant analysis already lives in MAVAVE_ANALYSIS.md
 PD41-Software-Instructions.pdf

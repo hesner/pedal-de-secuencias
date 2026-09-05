@@ -1,29 +1,29 @@
-# TESTING.md — Registro de pruebas
+# TESTING.md — Test log
 
-## Prueba 4.0 — Validación de audio + video simultáneo en la Raspberry Pi real
+## Test 4.0 — Validating simultaneous audio + video on the real Raspberry Pi
 
-**Fecha:** 2026-09-04 / 2026-09-05
-**Objetivo:** confirmar que la Raspberry Pi 2 puede reproducir un video H.264 con audio embebido (sin desincronizarse, ni al inicio ni con el tiempo) simultáneamente con un MP3 independiente, con la interfaz de audio USB Behringer, el M-VAVE y el USB de biblioteca conectados a la vez (los 3 dispositivos reales del show).
+**Date:** 2026-09-04 / 2026-09-05
+**Objective:** confirm that the Raspberry Pi 2 can play an H.264 video with embedded audio (without drifting out of sync, either at the start or over time) simultaneously with an independent MP3, with the USB Behringer audio interface, the M-VAVE, and the library USB drive all connected at once (the 3 real devices used in the show).
 
-### Entorno confirmado
+### Confirmed environment
 
-- **Hardware:** Raspberry Pi 2 Model B **Rev 1.1** (revisión `a01041`, SoC BCM2836 real — `/proc/cpuinfo` reporta "BCM2835" como nombre genérico del árbol de dispositivos, no es el chip real). Esta revisión es ARMv7 puro, sin soporte de 64-bit: la elección de imagen de 32-bit no es solo preferencia, es la única compatible con esta placa exacta.
-- **Sistema operativo:** Raspbian GNU/Linux 12 (bookworm), kernel `6.12.93+rpt-rpi-v7`. Confirmado headless real (`systemctl get-default` → `multi-user.target`, sin ningún compositor gráfico corriendo) tras reflashear con la variante Lite correcta — el primer intento había instalado por error la variante con escritorio (`graphical.target` + compositor `labwc`), detectado y corregido antes de esta prueba.
-- **Interfaz de audio:** Behringer (chip Texas Instruments PCM2902, se identifica como `USB Audio CODEC`).
-- **Controlador MIDI:** detectado como `SINCO` (chip Jieli Technology) vía `amidi -l` — muy probablemente el M-VAVE o un controlador de la misma familia de referencia.
-- **USB de biblioteca:** pendrive NTFS de 7.6GB, montado manualmente en modo **solo lectura** para esta prueba (Lite no trae automount de escritorio).
+- **Hardware:** Raspberry Pi 2 Model B **Rev 1.1** (revision `a01041`, real SoC BCM2836 — `/proc/cpuinfo` reports "BCM2835" as the device tree's generic name, not the real chip). This revision is pure ARMv7, with no 64-bit support: choosing the 32-bit image isn't just a preference, it's the only one compatible with this exact board.
+- **Operating system:** Raspbian GNU/Linux 12 (bookworm), kernel `6.12.93+rpt-rpi-v7`. Confirmed genuinely headless (`systemctl get-default` → `multi-user.target`, no graphical compositor running) after reflashing with the correct Lite variant — the first attempt had mistakenly installed the desktop variant (`graphical.target` + `labwc` compositor), detected and fixed before this test.
+- **Audio interface:** Behringer (Texas Instruments PCM2902 chip, identifies itself as `USB Audio CODEC`).
+- **MIDI controller:** detected as `SINCO` (Jieli Technology chip) via `amidi -l` — very likely the M-VAVE or a controller from the same reference family.
+- **Library USB drive:** 7.6GB NTFS thumb drive, manually mounted **read-only** for this test (Lite doesn't ship with desktop automount).
 
-### Pila de reproducción de video — resultado de la investigación pedida en 4.0
+### Video playback stack — result of the investigation requested in 4.0
 
-- `omxplayer`: **no disponible** en esta imagen (deprecado/retirado).
-- `mpv` y `ffmpeg`/`ffplay`/`ffprobe`: **no vienen instalados** en Raspberry Pi OS Lite por defecto; se instalaron sin problema (paquete no destructivo).
-- Decisión: **`mpv`**, con:
-  - Decodificación por hardware: `--hwdec=v4l2m2m-copy` (usa `/dev/video10`, el decodificador V4L2 M2M de la Pi). El modo "zero-copy" (`--hwdec=auto` con salida `drmprime`) **falla** (`Failed to commit atomic request (-22)`) en esta combinación de driver DRM/mpv 0.35.1 — no usar.
-  - Salida de video: `--gpu-context=drm --vo=gpu` (renderizado directo por DRM/KMS, sin necesidad de X11/Wayland).
-  - Salida de audio: **por la tarjeta Behringer, no por HDMI** (decisión confirmada: en el diseño final, todo el audio —el embebido del clip y cualquier pista independiente— sale por la interfaz de audio, HDMI es solo para video). Nota: además, la tarjeta `vc4hdmi` de esta pantalla de prueba solo expone formato `IEC958_SUBFRAME_LE` (passthrough digital), no PCM directo — otro motivo por el que HDMI no es viable para audio aquí, aunque sea irrelevante para el diseño final.
-  - Para mezclar el audio embebido del video **y** un audio independiente en la misma tarjeta física al mismo tiempo, se necesita un PCM ALSA `plug:dmix`, definido en `~/.asoundrc` (ver más abajo) — un `dmix` crudo por línea de comandos falla si las dos fuentes no comparten exactamente formato/tasa/canales.
+- `omxplayer`: **not available** on this image (deprecated/removed).
+- `mpv` and `ffmpeg`/`ffplay`/`ffprobe`: **not installed** by default on Raspberry Pi OS Lite; installed without issue (non-destructive package).
+- Decision: **`mpv`**, with:
+  - Hardware decoding: `--hwdec=v4l2m2m-copy` (uses `/dev/video10`, the Pi's V4L2 M2M decoder). "Zero-copy" mode (`--hwdec=auto` with `drmprime` output) **fails** (`Failed to commit atomic request (-22)`) with this DRM driver/mpv 0.35.1 combination — do not use.
+  - Video output: `--gpu-context=drm --vo=gpu` (direct DRM/KMS rendering, no X11/Wayland needed).
+  - Audio output: **through the Behringer card, not HDMI** (confirmed decision: in the final design, all audio — the clip's embedded audio and any independent track — goes out through the audio interface, HDMI is video-only). Note: additionally, this test screen's `vc4hdmi` card only exposes `IEC958_SUBFRAME_LE` format (digital passthrough), not direct PCM — another reason HDMI isn't viable for audio here, even though it's irrelevant to the final design.
+  - To mix the video's embedded audio **and** an independent audio track on the same physical card at the same time, an ALSA `plug:dmix` PCM is needed, defined in `~/.asoundrc` (see below) — a raw command-line `dmix` fails if the two sources don't share the exact same format/rate/channels.
 
-### Configuración ALSA usada (`~/.asoundrc` en la Pi, usuario `hesner`)
+### ALSA configuration used (`~/.asoundrc` on the Pi, user `hesner`)
 
 ```
 pcm.mixcodec {
@@ -36,36 +36,36 @@ ctl.mixcodec {
 }
 ```
 
-### Resultados — prueba de 5 minutos, carga simultánea real
+### Results — 5-minute test, real simultaneous load
 
-Video 1920x1080/30fps H.264+AAC (audio embebido) + MP3 independiente de 300s, reproducidos a la vez, con Behringer + M-VAVE + USB de biblioteca conectados. Métricas muestreadas cada 10s durante toda la prueba.
+1920x1080/30fps H.264+AAC video (embedded audio) + an independent 300s MP3, played at the same time, with Behringer + M-VAVE + library USB all connected. Metrics sampled every 10s throughout the test.
 
-| Métrica | Resultado |
+| Metric | Result |
 |---|---|
-| Sincronía audio-video (avsync) | Se mantuvo entre 0 y ~140ms durante los 5 minutos, **sin tendencia a crecer**. Cumple el requisito crítico de la sección 2 (no desincronización progresiva). |
-| Memoria | Estable: ~293→312 MB usados de 921MB totales, siempre >600MB libres. Sin fugas visibles. |
-| CPU | ~25-30% de uso durante la reproducción (70%+ idle). **La CPU no es el cuello de botella.** |
-| Cuadros de video perdidos | **~70% de los cuadros** (creciendo de forma sostenida y lineal, ~21 fps perdidos de 30fps objetivo). Confirmado real (no artefacto de generación de material de prueba). |
-| Subvoltaje durante la prueba | Ninguno nuevo (bits de `throttled` sin cambios durante los 5 minutos de carga real). |
+| Audio-video sync (avsync) | Stayed between 0 and ~140ms over the 5 minutes, **with no upward trend**. Meets the section 2 critical requirement (no progressive desync). |
+| Memory | Stable: ~293→312 MB used out of 921MB total, always >600MB free. No visible leaks. |
+| CPU | ~25-30% usage during playback (70%+ idle). **CPU is not the bottleneck.** |
+| Dropped video frames | **~70% of frames** (growing steadily and linearly, ~21 fps dropped out of a 30fps target). Confirmed real (not a test-material generation artifact). |
+| Undervoltage during the test | None new (`throttled` bits unchanged during the 5 minutes of real load). |
 
-### Hallazgo pendiente de resolver: pérdida de cuadros de video
+### Pending finding: video frame drops
 
-Causa identificada: `mpv` reporta `Assuming 60.000000 FPS for display sync` mientras el contenido es de 30fps — hay un desajuste 30-en-60 que el pipeline actual no maneja bien, resultando en descarte masivo de cuadros para mantener la sincronía de audio (que sí se prioriza correctamente).
+Identified cause: `mpv` reports `Assuming 60.000000 FPS for display sync` while the content is 30fps — there's a 30-into-60 mismatch that the current pipeline doesn't handle well, resulting in massive frame dropping to keep audio in sync (which is correctly prioritized).
 
-- **No es un límite de hardware/CPU** — hay CPU de sobra durante la prueba.
-- Se probó `--video-sync=display-resample` como posible corrección: **empeoró el resultado** (introdujo hasta 600ms de deriva real de audio-video, además de seguir perdiendo cuadros). Descartado.
-- Se investigó forzar un modo DRM nativo de 30Hz como posible corrección de raíz, pero **la pantalla usada en esta prueba (un monitor de PC Dell P2422H) no soporta ningún modo 1080p30 real** — su EDID solo ofrece 50/59.94/60Hz. No se pudo probar el forzado de 30Hz por esta limitación del monitor de prueba, no de la Pi.
-- **Importante — probable artefacto del entorno de prueba, no del hardware real del show:** el usuario confirmó que este monitor de PC **no es representativo** de la pantalla que se usará en los shows (que normalmente son televisores). Los televisores, siguiendo CEA-861, casi siempre sí incluyen modos nativos de 24/25/30Hz para contenido de video. Es probable que este problema de pérdida de cuadros **no ocurra con un TV real**, ya que eliminaría el desajuste 30-en-60 de raíz.
-- **Pendiente:** repetir esta prueba específica de pérdida de cuadros con un televisor real (o cualquier pantalla que ofrezca un modo 1080p30 nativo) antes de dar por buena o por mala la reproducción de video en producción. No bloqueante para continuar con otras partes del proyecto (como el análisis del M-VAVE) mientras se consigue una pantalla de prueba representativa.
+- **Not a hardware/CPU limit** — there's plenty of spare CPU during the test.
+- `--video-sync=display-resample` was tried as a possible fix: **it made things worse** (introduced up to 600ms of real audio-video drift, on top of still dropping frames). Discarded.
+- Forcing a native 30Hz DRM mode was investigated as a possible root fix, but **the screen used in this test (a Dell P2422H PC monitor) doesn't support any real 1080p30 mode** — its EDID only offers 50/59.94/60Hz. Forcing 30Hz couldn't be tested because of this test monitor's limitation, not the Pi's.
+- **Important — likely an artifact of the test environment, not of the show's real hardware:** the user confirmed this PC monitor **is not representative** of the screen that will be used at shows (typically TVs). TVs, following CEA-861, almost always do include native 24/25/30Hz modes for video content. This frame-drop issue is likely **not to occur with a real TV**, since it would eliminate the 30-into-60 mismatch at its root.
+- **Pending:** repeat this specific frame-drop test with a real TV (or any screen offering a native 1080p30 mode) before declaring production video playback good or bad. Not blocking for continuing other parts of the project (such as the M-VAVE analysis) while a representative test screen is obtained.
 
-### Hallazgo de alimentación eléctrica (resuelto)
+### Power supply finding (resolved)
 
-- **Cargador genérico de Chromecast (Google)**, cable estándar: causó un evento de subvoltaje real que **colgó la Raspberry Pi** durante la prueba de carga sostenida (mensaje "Undervoltage detected!" en pantalla, sistema sin responder). Confirmado con `vcgencmd get_throttled` (bits de subvoltaje/throttling históricos) y `dmesg` (el hub USB completo, los 6 puertos, se desconectó y reconectó 4 veces seguidas en los primeros ~95s de arranque).
-- **Solución aplicada:** cargador de 5V/2.5A. Con este cambio, en el arranque solo se observó un evento breve y no recurrente (3 de 6 puertos, una sola vez, ~89s), y **no hubo ningún cuelgue** en los 18+ minutos siguientes de uso, incluida una prueba completa de carga sostenida (decodificación 1080p + doble flujo de audio).
-- **Recomendación abierta:** si el evento breve residual molesta, probar además un cable USB de alimentación corto y de calibre grueso — no confirmado como necesario, solo como posible mejora adicional.
+- **Generic Chromecast (Google) charger**, standard cable: caused a real undervoltage event that **froze the Raspberry Pi** during the sustained-load test ("Undervoltage detected!" message on screen, system unresponsive). Confirmed with `vcgencmd get_throttled` (historical undervoltage/throttling bits) and `dmesg` (the entire USB hub, all 6 ports, disconnected and reconnected 4 times in a row within the first ~95s of boot).
+- **Fix applied:** a 5V/2.5A charger. With this change, only a brief, non-recurring event was observed at boot (3 of 6 ports, once, ~89s), and **there was no freeze** during the following 18+ minutes of use, including a full sustained-load test (1080p decoding + dual audio stream).
+- **Open recommendation:** if the residual brief event is bothersome, also try a short, thick-gauge power USB cable — not confirmed as necessary, just a possible additional improvement.
 
-### Conclusión de la prueba 4.0
+### Conclusion for test 4.0
 
-El hardware (Raspberry Pi 2 Rev 1.1 + USB Behringer + M-VAVE + USB de biblioteca, con fuente de 5V/2.5A) sostiene la reproducción simultánea de audio+video sin desincronización y sin agotar CPU/RAM — el requisito crítico de la sección 2 (audio y video de un mismo clip nunca desincronizados) queda validado.
+The hardware (Raspberry Pi 2 Rev 1.1 + USB Behringer + M-VAVE + library USB, with a 5V/2.5A supply) sustains simultaneous audio+video playback without desync and without exhausting CPU/RAM — the section 2 critical requirement (audio and video of the same clip never out of sync) is validated.
 
-**No se puede dar por cerrada del todo la sección 4.0** hasta repetir la verificación de pérdida de cuadros con una pantalla representativa del show (un televisor real, no el monitor de PC usado en esta prueba) — hay evidencia de que el problema encontrado es específico de las limitaciones de refresco de este monitor de prueba (sin modo 1080p30 nativo) y probablemente no se replique con un TV real. Queda como tarea de seguimiento; no bloquea continuar con el análisis del M-VAVE (sección 4.1) mientras se consigue una pantalla de prueba adecuada.
+**Section 4.0 cannot be considered fully closed** until the frame-drop check is repeated with a screen representative of the show (a real TV, not the PC monitor used in this test) — there is evidence that the issue found is specific to this test monitor's refresh limitations (no native 1080p30 mode) and likely won't reproduce with a real TV. This remains a follow-up task; it does not block continuing with the M-VAVE analysis (section 4.1) while a suitable test screen is obtained.

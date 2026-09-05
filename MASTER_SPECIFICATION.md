@@ -1,232 +1,232 @@
-# MASTER SPECIFICATION — Proyecto "Pedal de Secuencias"
+# MASTER SPECIFICATION — "Sequence Pedal" Project
 
-**Este documento es el contrato de Claude con este proyecto.** Define qué se debe construir, qué decisiones ya están aprobadas y no se deben cuestionar sin evidencia, qué decisiones están pendientes de investigación, cómo debe ser el flujo de trabajo entre nosotros y el agente, y cómo se revisan las decisiones a medida que aparece evidencia real (sección 9).
+**This document is Claude's contract with this project.** It defines what must be built, which decisions are already approved and must not be questioned without evidence, which decisions are pending investigation, what the workflow between us and the agent must look like, and how decisions are reviewed as real evidence appears (section 9).
 
-No implementes nada hasta haber leído este documento completo y confirmado que lo entendiste.
-
----
-
-## 1. Qué es este proyecto
-
-Un pedal/caja de control en vivo, basado en Raspberry Pi, que:
-
-- Recibe eventos MIDI estándar desde un controlador MIDI USB (cualquiera capaz de enviar Program Change 0-127 en el formato definido en este documento; ver sección 4 sobre el controlador con el que se validó la arquitectura).
-- Dispara **audio** (canciones/samples/efectos) y **video** (clips + standby) en tiempo real.
-- Se usa en presentaciones en vivo de la banda **NO FUTURO**.
-- Debe funcionar como un *appliance* dedicado: sin pantalla ni teclado durante el show, arranque automático al conectar alimentación.
-
-El objetivo final es que sea **open source**, con documentación bilingüe (es/en).
-
-Todo el trabajo de arquitectura, especificación, supervisión e implementación se hace directamente entre el usuario y Claude — no hay ninguna otra herramienta de IA involucrada en el proyecto.
+Do not implement anything until you have read this entire document and confirmed that you understood it.
 
 ---
 
-## 2. Decisiones ya aprobadas (NO renegociables)
+## 1. What this project is
 
-Estas decisiones están cerradas. Claude puede pedir aclaraciones, pero no debe proponer alternativas a menos que descubra un impedimento técnico real y lo justifique explícitamente.
+A live-performance control pedal/box, based on a Raspberry Pi, that:
 
-| Área | Decisión |
+- Receives standard MIDI events from a USB MIDI controller (any controller capable of sending Program Change 0-127 in the format defined in this document; see section 4 for the controller with which the architecture was validated).
+- Triggers **audio** (songs/samples/effects) and **video** (clips + standby) in real time.
+- Is used in live performances by the band **NO FUTURO**.
+- Must work as a dedicated *appliance*: no screen or keyboard during the show, automatic boot on power-up.
+
+The end goal is for it to be **open source**, with bilingual documentation (en/es).
+
+All architecture, specification, supervision, and implementation work is done directly between the user and Claude — no other AI tool is involved in the project.
+
+---
+
+## 2. Decisions already approved (NOT renegotiable)
+
+These decisions are closed. Claude may ask for clarification, but must not propose alternatives unless it discovers a real technical impediment and justifies it explicitly.
+
+| Area | Decision |
 |---|---|
-| Hardware base | Raspberry Pi 2 |
-| Sistema operativo | Raspberry Pi OS Legacy Lite (32-bit) |
-| Interfaz de audio | USB Behringer |
-| Controlador MIDI | Cualquier controlador MIDI USB estándar capaz de enviar Program Change 0-127, sin depender de funciones propietarias (arquitectura diseñada y validada empíricamente con un M-VAVE PD41 — ver sección 4, MAVAVE_ANALYSIS.md y TESTING.md) |
-| Salida de video | HDMI, exclusivamente para el público (no para monitoreo del músico) |
-| Audio | Reproducción de MP3 |
-| Video | MP4/MOV/MPEG, códec H.264 |
-| Sincronización audio-video | Los clips de video llevan su audio embebido en el mismo archivo (no son pistas separadas). Video y audio de un mismo clip **nunca deben desincronizarse**; esto es un requisito crítico, no solo deseable. El MP3 independiente (fila "Audio") es para elementos de audio-only de la biblioteca, sin relación con la sincronización de clips de video |
-| Modo de reposo | Video de standby (`standby.mp4`) en loop cuando no hay nada reproduciéndose |
-| Transición de video | Debe ser suave (sin cortes bruscos) entre clips y standby |
-| STOP | Es una acción global, de máxima prioridad, debe detener todo inmediatamente |
-| Almacenamiento | Biblioteca de setlists/secuencias en USB externo. **Este USB NUNCA debe formatearse ni sus archivos borrarse automáticamente** |
-| Arquitectura | Modular, por capas (ver sección 3) |
-| Protocolo | MIDI estándar — ninguna función propietaria del controlador puede filtrarse al Core |
-| Futuro | Debe soportar reemplazar el controlador MIDI actual por otro sin tocar el Core; posible portal web de administración más adelante |
-| Licencia/visibilidad | Proyecto open source |
-| Documentación | Bilingüe, español e inglés |
-| Roles | El usuario define arquitectura/especificación junto con Claude (chat); **Claude Code es el agente de implementación**. No hay otra herramienta de IA en el proyecto |
-| Entorno de desarrollo | Claude Code corre **nativo en Windows** (sin WSL2). Todo lo específico de hardware/OS (audio, MIDI, video, systemd) se prueba directamente contra la Raspberry Pi real vía SSH, no en un entorno Linux simulado en el PC |
+| Base hardware | Raspberry Pi 2 |
+| Operating system | Raspberry Pi OS Legacy Lite (32-bit) |
+| Audio interface | USB Behringer |
+| MIDI controller | Any standard USB MIDI controller capable of sending Program Change 0-127, without relying on proprietary features (architecture designed and empirically validated with an M-VAVE PD41 — see section 4, MAVAVE_ANALYSIS.md, and TESTING.md) |
+| Video output | HDMI, exclusively for the audience (not for the musician's monitoring) |
+| Audio | MP3 playback |
+| Video | MP4/MOV/MPEG, H.264 codec |
+| Audio-video sync | Video clips carry their audio embedded in the same file (not separate tracks). Video and audio of the same clip must **never drift out of sync**; this is a critical requirement, not merely desirable. The standalone MP3 (the "Audio" row) is for audio-only library items, unrelated to video-clip sync |
+| Idle mode | Standby video (`standby.mp4`) looping when nothing is playing |
+| Video transition | Must be smooth (no abrupt cuts) between clips and standby |
+| STOP | A global, highest-priority action; it must stop everything immediately |
+| Storage | Setlist/sequence library on an external USB drive. **This USB must NEVER be formatted, nor its files auto-deleted** |
+| Architecture | Modular, layered (see section 3) |
+| Protocol | Standard MIDI — no proprietary controller feature may leak into the Core |
+| Future-proofing | Must support replacing the current MIDI controller with another without touching the Core; a future web admin portal is possible |
+| License/visibility | Open source project |
+| Documentation | Bilingual, English and Spanish |
+| Roles | The user defines architecture/specification together with Claude (chat); **Claude Code is the implementation agent**. No other AI tool is involved in the project |
+| Development environment | Claude Code runs **natively on Windows** (no WSL2). Everything hardware/OS-specific (audio, MIDI, video, systemd) is tested directly against the real Raspberry Pi via SSH, not in a simulated Linux environment on the PC |
 
 ---
 
-## 3. Arquitectura obligatoria (capas)
+## 3. Mandatory architecture (layers)
 
-El sistema debe estar organizado en capas independientes. El Core **nunca** debe conocer conceptos específicos del controlador MIDI usado (bancos, grupos, pantalla de 2 dígitos, etc.). Solo debe conocer acciones abstractas.
+The system must be organized into independent layers. The Core must **never** know controller-specific concepts (banks, groups, 2-digit display, etc.). It must only know abstract actions.
 
 ```
-CONTROLADOR MIDI (cualquiera compatible)
+MIDI CONTROLLER (any compatible one)
         │
         ▼
-   MIDI ADAPTER          (traduce el hardware específico a eventos MIDI estándar)
+   MIDI ADAPTER          (translates the specific hardware into standard MIDI events)
         │
         ▼
-STANDARD MIDI EVENTS      (Note On/Off, PC, CC, SysEx — formato estándar)
+STANDARD MIDI EVENTS      (Note On/Off, PC, CC, SysEx — standard format)
         │
         ▼
-   MIDI MAPPER            (traduce eventos MIDI estándar a acciones abstractas)
+   MIDI MAPPER            (translates standard MIDI events into abstract actions)
         │
         ▼
   ABSTRACT ACTIONS        (SELECT_SETLIST, SELECT_TRACK, PLAY, STOP, NEXT, PREVIOUS, ...)
         │
         ▼
-       CORE               (lógica de reproducción de audio/video, biblioteca, standby)
+       CORE               (audio/video playback logic, library, standby)
 ```
 
-Regla explícita: **ningún banco/grupo del controlador MIDI debe convertirse literalmente en un concepto del Core.** Aunque la estrategia final termine siendo "Grupo del controlador = Setlist", esa equivalencia debe vivir en el Adapter/Mapper, nunca en el Core.
+Explicit rule: **no bank/group from the MIDI controller may become a literal Core concept.** Even if the final strategy ends up being "controller group = setlist," that equivalence must live in the Adapter/Mapper, never in the Core.
 
-Esto permite que en el futuro un controlador distinto (otro MIDI, una app móvil, etc.) pueda generar las mismas acciones abstractas sin modificar el Core.
+This allows a different controller in the future (another MIDI device, a mobile app, etc.) to produce the same abstract actions without modifying the Core.
 
 ---
 
-## 4. Paso previo obligatorio y decisión pendiente — Estrategia M-VAVE
+## 4. Mandatory prerequisite and pending decision — MIDI controller strategy
 
-### 4.0 Paso previo — Validar audio + video simultáneo en la Raspberry Pi real
+### 4.0 Prerequisite — Validate simultaneous audio + video on the real Raspberry Pi
 
-**Antes de iniciar el análisis del M-VAVE (4.1 en adelante), valida esto primero, conectado por SSH a la Raspberry Pi real:**
+**Before starting the controller analysis (4.1 onward), validate this first, connected via SSH to the real Raspberry Pi:**
 
-La Raspberry Pi 2 es hardware limitado (quad-core Cortex-A7, 1GB RAM, USB 2.0 compartido entre todos los puertos). Antes de construir el MIDI Engine y el resto de la arquitectura, hay que confirmar que el hardware puede sostener el caso de uso real:
+The Raspberry Pi 2 is limited hardware (quad-core Cortex-A7, 1GB RAM, USB 2.0 shared across all ports). Before building the MIDI Engine and the rest of the architecture, we need to confirm the hardware can sustain the real use case:
 
-- Reproducir un video H.264 con audio embebido (sección 2 — audio y video del mismo clip nunca deben desincronizarse) por HDMI, **y** un MP3 independiente si aplica al mismo tiempo, sin cortes, pops de audio, ni deriva de sincronización entre audio y video.
-- Hacerlo con la interfaz de audio USB Behringer, el M-VAVE **y el USB de biblioteca** conectados simultáneamente (los 3 dispositivos reales del show), para detectar problemas de ancho de banda/energía en el bus USB compartido. El USB de biblioteca solo debe conectarse para esta medición — no escribir ni modificar nada en él.
-- Determinar y documentar qué stack de reproducción de video es viable en Raspberry Pi OS Legacy Lite sin entorno gráfico (por ejemplo, si `omxplayer` sigue disponible en esta imagen específica, o si hace falta usar `mpv` con salida DRM/KMS, `ffplay` u otra alternativa). Esto es parte del resultado esperado de esta prueba, no una decisión previa.
-- Medir uso de CPU/RAM durante esa prueba, y verificar específicamente que audio y video permanezcan sincronizados a lo largo del tiempo (no solo al inicio de la reproducción).
+- Play an H.264 video with embedded audio (section 2 — video and audio of the same clip must never drift out of sync) over HDMI, **and** an independent MP3 at the same time if applicable, with no dropouts, audio pops, or sync drift between audio and video.
+- Do this with the USB Behringer audio interface, the MIDI controller, **and the library USB drive** connected simultaneously (the 3 real devices used in the show), to detect bandwidth/power issues on the shared USB bus. The library USB should only be connected for this measurement — do not write to or modify anything on it.
+- Determine and document which video playback stack is viable on Raspberry Pi OS Legacy Lite without a graphical environment (for example, whether `omxplayer` is still available on this specific image, or whether `mpv` with DRM/KMS output, `ffplay`, or another alternative is needed). This is part of this test's expected outcome, not a prior decision.
+- Measure CPU/RAM usage during the test, and specifically verify that audio and video stay in sync over time (not just at the start of playback).
 
-Si esta prueba falla o muestra cortes/desincronización, repórtalo antes de continuar — puede cambiar decisiones de arquitectura más arriba (por ejemplo, si el video debe ser opcional o de menor resolución). No se debe avanzar a construir el resto del sistema sin este resultado documentado en `TESTING.md`.
+If this test fails or shows dropouts/desync, report it before continuing — it may change architecture decisions above (for example, whether video should be optional or lower resolution). Do not proceed to build the rest of the system without this result documented in `TESTING.md`.
 
-### 4.1–4.5 Decisión pendiente — Estrategia M-VAVE (tarea de análisis obligatoria)
+### 4.1–4.5 Pending decision — MIDI controller strategy (mandatory analysis task)
 
-**No implementes el MIDI Engine antes de completar esta tarea.**
+**Do not implement the MIDI Engine before completing this task.**
 
-Se te entregará (por separado, en otro mensaje/archivo) el manual de configuración del M-VAVE y una fotografía de su pantalla (display de 2 dígitos, tipo 7 segmentos).
+You will be given (separately, in another message/file) the controller's configuration manual and a photo of its display (2-digit, 7-segment-style).
 
-### 4.1 Qué debes analizar del M-VAVE
+### 4.1 What you must analyze about the controller
 
-- Modos MIDI disponibles.
-- Program Change: rango, comportamiento.
-- Control Change: rango, comportamiento.
-- Note On/Off: uso disponible.
-- SysEx: si aplica.
-- Bancos/grupos: cuántos hay, cómo se navegan.
-- Qué puede mostrar realmente la pantalla de 2 dígitos (números, qué letras/caracteres son representables, qué pasa con valores >9 o >99).
-- Comportamiento de pulsación corta, pulsación larga y combinaciones de botones.
-- Qué configuración es persistente en el propio controlador vs. qué se puede controlar desde la Raspberry Pi vs. qué solo se configura desde software del fabricante.
-- Qué comportamiento es estándar MIDI y cuál es específico/propietario del M-VAVE.
+- Available MIDI modes.
+- Program Change: range, behavior.
+- Control Change: range, behavior.
+- Note On/Off: available use.
+- SysEx: if applicable.
+- Banks/groups: how many there are, how they are navigated.
+- What the 2-digit display can actually show (numbers, which letters/characters are representable, what happens with values >9 or >99).
+- Behavior of short press, long press, and button combinations.
+- Which configuration is persistent on the controller itself vs. what can be controlled from the Raspberry Pi vs. what can only be configured from the manufacturer's software.
+- Which behavior is standard MIDI and which is specific/proprietary to the controller.
 
-### 4.1.1 Validación empírica con el M-VAVE físico (obligatoria, no opcional)
+### 4.1.1 Empirical validation with the physical controller (mandatory, not optional)
 
-**El manual es el punto de partida, no la fuente de verdad.** Los manuales de este tipo de controladores suelen estar incompletos o ser imprecisos en los detalles finos. La fuente de verdad es el comportamiento real medido.
+**The manual is the starting point, not the source of truth.** Manuals for this kind of controller are often incomplete or imprecise on fine details. The source of truth is measured real-world behavior.
 
-Con el M-VAVE conectado por USB directamente a la Raspberry Pi (por SSH, no en un entorno simulado en el PC):
+With the controller connected via USB directly to the Raspberry Pi (over SSH, not in a simulated environment on the PC):
 
-1. Identifica el dispositivo: `amidi -l`.
-2. Captura en vivo los mensajes MIDI reales mientras se prueba físicamente cada botón, modo y combinación descrita en el manual: `aseqdump -p <puerto>` (o `amidi -p <puerto> -d` según corresponda).
-3. Por cada elemento del manual (cada botón, cada modo, cada combinación, cada banco/grupo), registra en una tabla: *lo que dice el manual* vs. *lo que realmente se recibió* (canal, tipo de mensaje, número, valor).
-4. Comprueba también la dirección inversa: si es posible enviarle algo a la Raspberry al M-VAVE (SysEx u otro mensaje) que produzca una reacción visible (por ejemplo, en la pantalla) — no asumas esto del manual, compruébalo empíricamente.
-5. Documenta cualquier discrepancia entre el manual y el comportamiento real; esas discrepancias tienen prioridad sobre lo que diga el manual al momento de decidir la estrategia.
+1. Identify the device: `amidi -l`.
+2. Capture real MIDI messages live while physically testing every button, mode, and combination described in the manual: `aseqdump -p <port>` (or `amidi -p <port> -d`, as appropriate).
+3. For each element in the manual (each button, each mode, each combination, each bank/group), record in a table: *what the manual says* vs. *what was actually received* (channel, message type, number, value).
+4. Also check the reverse direction: whether it's possible to send something from the Raspberry Pi to the controller (SysEx or another message) that produces a visible reaction (for example, on the display) — do not assume this from the manual, verify it empirically.
+5. Document any discrepancy between the manual and real behavior; these discrepancies take priority over what the manual says when deciding the strategy.
 
-Esta tabla de comportamiento real medido debe incluirse en `MAVAVE_ANALYSIS.md`, junto con el análisis de alternativas — no reemplaza el análisis del manual (4.1), lo complementa y, en caso de conflicto, prevalece sobre él.
+This table of measured real behavior must be included in `MAVAVE_ANALYSIS.md`, along with the alternatives analysis — it does not replace the manual analysis (4.1), it complements it and, in case of conflict, takes precedence over it.
 
-### 4.2 Alternativas a comparar (mínimo estas, más las que encuentres en el manual)
+### 4.2 Alternatives to compare (at least these, plus any you find in the manual)
 
-- **A**: M-VAVE Bank/Group → Setlist; Footswitch → Track.
-- **B**: Program Change → selección global.
+- **A**: Controller Bank/Group → Setlist; Footswitch → Track.
+- **B**: Program Change → global selection.
 - **C**: Bank/Group → Setlist; PC/CC → Track.
-- **D**: CC/Note → acciones abstractas (sin mapeo directo a bancos).
+- **D**: CC/Note → abstract actions (no direct mapping to banks).
 
-### 4.3 Criterios de evaluación (usa esta tabla, con este peso relativo)
+### 4.3 Evaluation criteria (use this table, with this relative weight)
 
-| Criterio | Peso |
+| Criterion | Weight |
 |---|---|
-| Facilidad para el músico en vivo | Muy alto |
-| Información visible en la pantalla del M-VAVE | Muy alto |
-| Cantidad de setlists soportables | Alto |
-| Cantidad de secuencias/tracks soportables | Muy alto |
-| Facilidad para navegar en vivo | Muy alto |
-| Fiabilidad del STOP permanente | Muy alto |
-| Compatibilidad con MIDI estándar | Muy alto |
-| Compatibilidad futura con otro controlador | Muy alto |
-| Dependencia de funciones propietarias del M-VAVE | Alto (cuanto menor, mejor) |
-| Complejidad de implementación | Medio |
-| Escalabilidad futura | Muy alto |
+| Ease of use for the musician live | Very high |
+| Information visible on the controller's display | Very high |
+| Number of supportable setlists | High |
+| Number of supportable sequences/tracks | Very high |
+| Ease of navigating live | Very high |
+| Reliability of a permanent STOP | Very high |
+| Standard MIDI compatibility | Very high |
+| Future compatibility with another controller | Very high |
+| Dependence on proprietary controller features | High (the lower, the better) |
+| Implementation complexity | Medium |
+| Future scalability | Very high |
 
-### 4.4 Entregable esperado
+### 4.4 Expected deliverable
 
-Un archivo `MAVAVE_ANALYSIS.md` con:
+A `MAVAVE_ANALYSIS.md` file with:
 
-1. Capacidades reales encontradas en el manual.
-2. **Tabla de validación empírica** (manual vs. comportamiento real medido, sección 4.1.1), con las discrepancias encontradas.
-3. Limitaciones (pantalla, memoria, configuración).
-4. Comparación de alternativas contra la tabla de criterios.
-5. Ventajas/desventajas de cada alternativa.
-6. **Una recomendación final justificada** ("Recomendamos la estrategia X porque...") — no elijas la más fácil de programar, elige la más robusta según los criterios y respaldada por el comportamiento real medido, no solo por el manual.
+1. Real capabilities found in the manual.
+2. **Empirical validation table** (manual vs. measured real behavior, section 4.1.1), with the discrepancies found.
+3. Limitations (display, memory, configuration).
+4. Comparison of alternatives against the criteria table.
+5. Pros/cons of each alternative.
+6. **A final, justified recommendation** ("We recommend strategy X because...") — do not pick the easiest to program, pick the most robust one according to the criteria and backed by measured real behavior, not just by the manual.
 
-**Importante: no implementes la estrategia todavía.** Preséntala para aprobación (ver sección 6, flujo de trabajo).
+**Important: do not implement the strategy yet.** Present it for approval (see section 6, workflow).
 
-### 4.5 STOP — análisis separado y obligatorio
+### 4.5 STOP — separate, mandatory analysis
 
-El STOP es una acción global de máxima prioridad. Analiza todos los mecanismos disponibles (pulsación larga, combinaciones, CC, Note, PC, u otros) y determina la implementación más robusta. La decisión debe:
+STOP is a global, highest-priority action. Analyze every available mechanism (long press, combinations, CC, Note, PC, or others) and determine the most robust implementation. The decision must:
 
-- Minimizar la dependencia de funciones propietarias del controlador.
-- Preservar la posibilidad de usar otro controlador MIDI en el futuro.
-- Ser justificada como decisión de ingeniería, no asumida de antemano.
+- Minimize dependence on proprietary controller features.
+- Preserve the possibility of using a different MIDI controller in the future.
+- Be justified as an engineering decision, not assumed up front.
 
-### Nota de portabilidad (resultado de esta sección)
+### Portability note (result of this section)
 
-La arquitectura y el Mapper resultantes de este análisis (`src/mapper/`) están diseñados para funcionar con **cualquier controlador MIDI capaz de enviar Program Change 0-127 en este mismo formato**, sin cambios de código — ninguna función propietaria de ningún fabricante queda incorporada al Mapper ni al Core (sección 3). El controlador físico usado para diseñar y validar empíricamente esta estrategia, incluida una prueba en vivo con hardware real, fue un **M-VAVE PD41** (ver `MAVAVE_ANALYSIS.md` para el análisis y `TESTING.md` para la validación).
-
----
-
-## 5. Qué puede hacer Claude autónomamente vs. qué requiere aprobación
-
-### Autónomo (sin pedir permiso)
-
-- Crear archivos.
-- Modificar código.
-- Ejecutar pruebas.
-- Instalar paquetes no destructivos.
-- Analizar logs.
-- Ejecutar comandos Git (add, commit en ramas de trabajo, diff, log).
-- Crear documentación.
-- Diagnosticar problemas.
-- Proponer soluciones y alternativas.
-- Probar distintos enfoques en un entorno de pruebas.
-
-### Requiere aprobación explícita antes de actuar
-
-- Cambiar cualquier decisión ya aprobada en la sección 2.
-- Eliminar funcionalidades existentes.
-- Cambiar requisitos.
-- Formatear el USB de biblioteca.
-- Borrar archivos de la biblioteca de setlists/secuencias.
-- Borrar discos o modificar particiones.
-- Cualquier operación destructiva sobre datos existentes.
-- Contratar/activar servicios o consumir créditos de API adicionales.
-- Reemplazar hardware.
-- Abandonar una decisión arquitectónica ya aprobada (como la de la sección 3).
+The architecture and Mapper resulting from this analysis (`src/mapper/`) are designed to work with **any MIDI controller capable of sending Program Change 0-127 in this same format**, with no code changes — no manufacturer's proprietary feature is baked into the Mapper or the Core (section 3). The physical controller used to design and empirically validate this strategy, including a live test with real hardware, was an **M-VAVE PD41** (see `MAVAVE_ANALYSIS.md` for the analysis and `TESTING.md` for the validation).
 
 ---
 
-## 6. Flujo de trabajo obligatorio
+## 5. What Claude can do autonomously vs. what requires approval
 
-Para cada requisito o módulo nuevo:
+### Autonomous (no permission needed)
+
+- Create files.
+- Modify code.
+- Run tests.
+- Install non-destructive packages.
+- Analyze logs.
+- Run Git commands (add, commit on working branches, diff, log).
+- Create documentation.
+- Diagnose problems.
+- Propose solutions and alternatives.
+- Try different approaches in a test environment.
+
+### Requires explicit approval before acting
+
+- Changing any decision already approved in section 2.
+- Removing existing functionality.
+- Changing requirements.
+- Formatting the library USB drive.
+- Deleting files from the setlist/sequence library.
+- Deleting disks or modifying partitions.
+- Any destructive operation on existing data.
+- Signing up for/activating services or consuming additional API credits.
+- Replacing hardware.
+- Abandoning an already-approved architectural decision (such as the one in section 3).
+
+---
+
+## 6. Mandatory workflow
+
+For every new requirement or module:
 
 ```
-1. Definir el requisito (nosotros)
-2. Claude analiza
-3. Claude propone (sin implementar)
-4. Nosotros aprobamos o pedimos ajustes
-5. Claude implementa
-6. Claude prueba
-7. Nosotros validamos
+1. Define the requirement (us)
+2. Claude analyzes
+3. Claude proposes (without implementing)
+4. We approve or request adjustments
+5. Claude implements
+6. Claude tests
+7. We validate
 8. git commit
-9. Siguiente requisito
+9. Next requirement
 ```
 
-No se debe saltar del paso 2 al 5. Toda propuesta de arquitectura o de mapeo MIDI debe pasar por aprobación antes de convertirse en código definitivo.
+Do not skip from step 2 to step 5. Every architecture or MIDI mapping proposal must go through approval before becoming final code.
 
 ---
 
-## 7. Estructura de repositorio sugerida
+## 7. Suggested repository structure
 
 ```
 PEDAL-DE-SECUENCIAS/
@@ -235,7 +235,7 @@ PEDAL-DE-SECUENCIAS/
 ├── ARCHITECTURE.md
 ├── MIDI_SPECIFICATION.md
 ├── MAVAVE_SPECIFICATION.md
-├── MAVAVE_ANALYSIS.md        (generado por Claude, sección 4)
+├── MAVAVE_ANALYSIS.md        (generated by Claude, section 4)
 ├── LIBRARY_SPECIFICATION.md
 ├── MEDIA_SPECIFICATION.md
 ├── HARDWARE_SPECIFICATION.md
@@ -245,40 +245,40 @@ PEDAL-DE-SECUENCIAS/
 ├── ROADMAP.md
 │
 ├── docs/
-│   ├── es/
-│   └── en/
+│   ├── en/
+│   └── es/
 │
 └── src/
 ```
 
-Estos archivos no necesitan existir todos desde el día uno; se crean a medida que cada área se define.
+These files don't all need to exist from day one; they get created as each area is defined.
 
 ---
 
-## 8. Primera instrucción a darle a Claude Code
+## 8. First instruction to give Claude Code
 
-Una vez Claude Code esté instalado y corriendo dentro del repositorio, la primera instrucción (antes de tocar código) debe ser aproximadamente:
+Once Claude Code is installed and running inside the repository, the first instruction (before touching any code) should be roughly:
 
-> Este repositorio corresponde al proyecto Pedal de Secuencias. Lee MASTER_SPECIFICATION.md completo. No implementes nada todavía. Confirma que entendiste las decisiones aprobadas (sección 2), la arquitectura por capas obligatoria (sección 3) y el flujo de trabajo (sección 6). Señala cualquier contradicción, riesgo técnico o ambigüedad que encuentres.
+> This repository corresponds to the "Sequence Pedal" project. Read MASTER_SPECIFICATION.md in full. Do not implement anything yet. Confirm that you understood the approved decisions (section 2), the mandatory layered architecture (section 3), and the workflow (section 6). Point out any contradiction, technical risk, or ambiguity you find.
 
-Cuando confirme, se le pide ejecutar primero la prueba de audio+video de la sección 4.0 vía SSH contra la Raspberry Pi real. Solo después de documentar ese resultado se le entrega el manual del M-VAVE y se le pide ejecutar el análisis de la sección 4.1 en adelante.
+Once confirmed, it is asked to first run the audio+video test from section 4.0 via SSH against the real Raspberry Pi. Only after documenting that result is it given the controller's manual and asked to carry out the analysis from section 4.1 onward.
 
 ---
 
-## 9. Revisión continua basada en evidencia
+## 9. Continuous evidence-based review
 
-Este proyecto no es de arquitectura fija desde el día uno: se espera que las decisiones se ajusten a medida que aparece evidencia real de comportamiento en hardware (latencia MIDI, estabilidad de audio/video, uso de CPU/RAM, limitaciones reales del M-VAVE descubiertas en la práctica).
+This project does not have a fixed architecture from day one: decisions are expected to be adjusted as real evidence of hardware behavior appears (MIDI latency, audio/video stability, CPU/RAM usage, real controller limitations discovered in practice).
 
-Claude debe monitorear activamente el desempeño real de lo que ya está implementado. Si detecta que una decisión aprobada no está funcionando como se esperaba, debe:
+Claude must actively monitor the real performance of what has already been implemented. If it detects that an approved decision is not working as expected, it must:
 
-1. **Documentar la evidencia concreta** que sustenta el hallazgo (mediciones, logs, comportamiento observado) — nunca una opinión de estilo o preferencia sin datos detrás.
-2. **Proponer una alternativa justificada**, incluyendo el costo/impacto de cambiarla en el punto actual del proyecto (qué se reescribe, qué se pierde, qué se gana).
-3. **Esperar aprobación explícita** antes de implementar el cambio — el mismo mecanismo de la sección 6, no un atajo.
+1. **Document the concrete evidence** supporting the finding (measurements, logs, observed behavior) — never a style opinion or preference without data behind it.
+2. **Propose a justified alternative**, including the cost/impact of changing it at the project's current point (what gets rewritten, what is lost, what is gained).
+3. **Wait for explicit approval** before implementing the change — the same mechanism as section 6, no shortcuts.
 
-Esto aplica en **cualquier momento** del proyecto, no solo durante el análisis inicial: tanto si Claude detecta el problema por sí mismo ejecutando pruebas, como si nosotros lo notamos y se lo planteamos a él para que lo evalúe.
+This applies **at any point** in the project, not just during the initial analysis: whether Claude detects the problem itself by running tests, or we notice it and raise it for Claude to evaluate.
 
-Ejemplo de cómo Claude debería plantearlo:
+Example of how Claude should raise it:
 
-> "La estrategia de Bank/Group → Setlist funciona, pero en pruebas reales el cambio de grupo en el M-VAVE tarda ~400ms en reflejarse en pantalla, lo que puede confundir al músico en vivo. Evidencia: [logs/mediciones]. Propongo cambiar a la alternativa C (PC/CC → Track) porque elimina ese retraso. Costo del cambio: hay que reescribir el Mapper, no el Adapter ni el Core. ¿Apruebas este cambio?"
+> "The Bank/Group → Setlist strategy works, but in real tests changing groups on the controller takes ~400ms to show on the display, which can confuse the musician live. Evidence: [logs/measurements]. I propose switching to alternative C (PC/CC → Track) because it eliminates that delay. Cost of the change: the Mapper needs to be rewritten, not the Adapter or the Core. Do you approve this change?"
 
-No se trata de rediseñar todo constantemente, sino de que ninguna decisión quede "congelada" solo porque ya se aprobó una vez — se ajusta cuando hay evidencia real que lo justifique, y siempre con nuestra aprobación antes de tocar código.
+This isn't about constantly redesigning everything, but about no decision staying "frozen" just because it was approved once — it gets adjusted when there is real evidence to justify it, and always with our approval before touching code.

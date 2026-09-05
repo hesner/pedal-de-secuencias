@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 """
-Script de prueba en vivo: conecta el Adapter del M-VAVE al Mapper e
-imprime en pantalla la acción abstracta resultante de cada Program Change
-recibido. Pensado para validar a mano (presionando footswitches reales)
-antes de aprobar el paso 7 del flujo de trabajo (sección 6 de
-MASTER_SPECIFICATION.md).
+Live test script: connects the M-VAVE Adapter to the Mapper and prints
+the resulting abstract action for every Program Change received. Meant
+for hands-on validation (pressing real footswitches) before approving
+step 7 of the workflow (section 6 of MASTER_SPECIFICATION.md).
 
-Requisito: el M-VAVE debe estar en modo "Program Change A" (seleccionado
-desde la app del fabricante) -- este script no cambia el modo del
-controlador, solo escucha.
+Requirement: the M-VAVE must be in "Program Change A" mode (selected from
+the manufacturer's app) -- this script doesn't change the controller's
+mode, it only listens.
 
-Uso (en la Raspberry Pi):
-    cd ~/pedal_src_test   # o donde esté el repo
+Usage (on the Raspberry Pi):
+    cd ~/pedal_src_test   # or wherever the repo is
     python3 src/live_test.py
 
-Ctrl+C para salir.
+Ctrl+C to exit.
 """
 
 import sys
@@ -22,7 +21,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
-from adapter import MVaveAdapter, DispositivoNoEncontrado  # noqa: E402
+from adapter import MVaveAdapter, DeviceNotFoundError  # noqa: E402
 from mapper import Mapper, SelectTrack, Stop  # noqa: E402
 
 
@@ -31,25 +30,25 @@ def main():
 
     try:
         with MVaveAdapter(port_name_pattern="SINCO") as adapter:
-            print("Conectado. Esperando Program Change (Ctrl+C para salir)...", flush=True)
-            print("Recuerda: el M-VAVE debe estar en modo 'Program Change A'.\n", flush=True)
+            print("Connected. Waiting for Program Change (Ctrl+C to exit)...", flush=True)
+            print("Remember: the M-VAVE must be in 'Program Change A' mode.\n", flush=True)
 
             for channel, program in adapter.program_changes():
-                accion = mapper.map_program_change(program)
+                action = mapper.map_program_change(program)
 
-                if isinstance(accion, Stop):
-                    print(f"[canal {channel}] PC={program:3d}  ->  STOP", flush=True)
-                elif isinstance(accion, SelectTrack):
+                if isinstance(action, Stop):
+                    print(f"[channel {channel}] PC={program:3d}  ->  STOP", flush=True)
+                elif isinstance(action, SelectTrack):
                     print(
-                        f"[canal {channel}] PC={program:3d}  ->  "
-                        f"SelectTrack(setlist={accion.setlist}, track={accion.track})",
+                        f"[channel {channel}] PC={program:3d}  ->  "
+                        f"SelectTrack(setlist={action.setlist}, track={action.track})",
                         flush=True,
                     )
-    except DispositivoNoEncontrado as e:
+    except DeviceNotFoundError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
-        print("\nSaliendo.")
+        print("\nExiting.")
 
 
 if __name__ == "__main__":

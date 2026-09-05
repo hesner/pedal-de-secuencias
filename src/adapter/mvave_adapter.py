@@ -1,34 +1,34 @@
 """
-MIDI Adapter para el M-VAVE (ver sección 3 de MASTER_SPECIFICATION.md).
+MIDI Adapter for the M-VAVE (see section 3 of MASTER_SPECIFICATION.md).
 
-Su único trabajo es: encontrar el puerto ALSA del controlador y entregar
-eventos MIDI estándar ya decodidos (canal, programa) hacia arriba. No
-traduce nada semánticamente -- en la estrategia aprobada (modo "Program
-Change A" del M-VAVE) el hardware ya manda Program Change estándar
-directamente, así que este Adapter es intencionalmente delgado.
+Its only job is: find the controller's ALSA port and hand already-decoded
+standard MIDI events (channel, program) upward. It doesn't translate
+anything semantically -- under the approved strategy (the M-VAVE's
+"Program Change A" mode) the hardware already sends standard Program
+Change directly, so this Adapter is intentionally thin.
 
-Si en el futuro se reemplaza el M-VAVE por un controlador que sí necesite
-traducción real (por ejemplo, uno que solo mande Note On/Off y haya que
-convertir a Program Change), ese trabajo adicional va aquí, nunca en el
-Mapper ni en el Core.
+If the M-VAVE is replaced in the future by a controller that does need
+real translation (for example, one that only sends Note On/Off and needs
+converting to Program Change), that extra work goes here, never in the
+Mapper or the Core.
 
-Requiere: python3-mido y python3-rtmidi (instalados vía apt en la Pi).
+Requires: python3-mido and python3-rtmidi (installed via apt on the Pi).
 """
 
 import mido
 
 
-class DispositivoNoEncontrado(RuntimeError):
+class DeviceNotFoundError(RuntimeError):
     pass
 
 
 class MVaveAdapter:
     def __init__(self, port_name_pattern: str = "SINCO"):
-        """port_name_pattern: subcadena (sin importar mayúsculas/minúsculas)
-        a buscar entre los puertos MIDI de entrada disponibles. Por defecto
-        busca "SINCO", que es el nombre que reporta el M-VAVE modelo PD41
-        ante ALSA (confirmado empíricamente, ver MAVAVE_ANALYSIS.md -- el
-        M-VAVE NO se identifica con la cadena "M-VAVE" a nivel USB/ALSA).
+        """port_name_pattern: substring (case-insensitive) to look for among
+        the available MIDI input ports. Defaults to "SINCO", which is the
+        name the M-VAVE PD41 reports to ALSA (confirmed empirically, see
+        MAVAVE_ANALYSIS.md -- the M-VAVE does NOT identify itself with the
+        string "M-VAVE" at the USB/ALSA level).
         """
         self.port_name_pattern = port_name_pattern
         self._port = None
@@ -37,16 +37,16 @@ class MVaveAdapter:
         available = mido.get_input_names()
         matches = [p for p in available if self.port_name_pattern.lower() in p.lower()]
         if not matches:
-            raise DispositivoNoEncontrado(
-                f"No se encontró ningún puerto MIDI de entrada que contenga "
-                f"'{self.port_name_pattern}'. Puertos disponibles: {available!r}. "
-                f"¿Está el controlador conectado por USB?"
+            raise DeviceNotFoundError(
+                f"No MIDI input port containing '{self.port_name_pattern}' "
+                f"was found. Available ports: {available!r}. "
+                f"Is the controller connected via USB?"
             )
         return matches[0]
 
     def open(self) -> str:
-        """Abre el puerto y lo deja listo para recibir mensajes.
-        Devuelve el nombre exacto del puerto abierto (útil para logs)."""
+        """Opens the port and leaves it ready to receive messages.
+        Returns the exact name of the opened port (useful for logs)."""
         port_name = self._find_port_name()
         self._port = mido.open_input(port_name)
         return port_name
@@ -65,19 +65,19 @@ class MVaveAdapter:
         return False
 
     def program_changes(self):
-        """Generador infinito (bloqueante): produce (channel, program) por
-        cada mensaje Program Change recibido. Cualquier otro tipo de
-        mensaje MIDI (Note On/Off, Control Change, etc.) se ignora en
-        silencio -- no es relevante para la estrategia aprobada.
+        """Infinite (blocking) generator: yields (channel, program) for
+        every Program Change message received. Any other kind of MIDI
+        message (Note On/Off, Control Change, etc.) is silently ignored --
+        it isn't relevant to the approved strategy.
 
-        NOTA: se ignora deliberadamente el Control Change que el M-VAVE
-        manda al usar su combinación de botones E/F para cambiar de grupo
-        -- ver la nota de portabilidad en mapper.py.
+        NOTE: the Control Change the M-VAVE sends when using its E/F button
+        combination to switch groups is deliberately ignored -- see the
+        portability note in mapper.py.
         """
         if self._port is None:
             raise RuntimeError(
-                "El adapter no está abierto -- llama a open() primero "
-                "(o úsalo con 'with MVaveAdapter() as adapter:')"
+                "The adapter isn't open -- call open() first "
+                "(or use it with 'with MVaveAdapter() as adapter:')"
             )
         for msg in self._port:
             if msg.type == "program_change":

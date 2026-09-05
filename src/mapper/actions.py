@@ -1,9 +1,10 @@
 """
-Acciones abstractas del Core (sección 3 de MASTER_SPECIFICATION.md).
+Abstract Core actions (section 3 of MASTER_SPECIFICATION.md).
 
-Estas clases son lo único que el Mapper le entrega al Core. El Core nunca
-debe ver un número de Program Change, un canal MIDI, ni ningún concepto del
-controlador físico (grupos, footswitches A-D, etc.) — solo estas acciones.
+These classes are the only thing the Mapper hands to the Core. The Core
+must never see a Program Change number, a MIDI channel, or any concept
+from the physical controller (groups, footswitches A-D, etc.) -- only
+these actions.
 """
 
 from dataclasses import dataclass
@@ -11,9 +12,9 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SelectTrack:
-    """Seleccionar una secuencia (track) dentro de un setlist.
+    """Select a sequence (track) within a setlist.
 
-    setlist y track son 1-indexados (más natural para humanos / logs).
+    setlist and track are 1-indexed (more natural for humans / logs).
     """
     setlist: int
     track: int
@@ -21,5 +22,5 @@ class SelectTrack:
 
 @dataclass(frozen=True)
 class Stop:
-    """Acción global de máxima prioridad: detener todo inmediatamente."""
+    """Global, highest-priority action: stop everything immediately."""
     pass

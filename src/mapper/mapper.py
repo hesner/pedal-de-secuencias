@@ -1,51 +1,51 @@
 """
-MIDI Mapper para la estrategia aprobada (ver MAVAVE_ANALYSIS.md, sección
-"4.2-4.4 Comparación de alternativas y recomendación").
+MIDI Mapper for the approved strategy (see MAVAVE_ANALYSIS.md, section
+"4.2-4.4 Comparison of alternatives and recommendation").
 
-Traduce eventos MIDI estándar (Program Change) a acciones abstractas del
-Core (SelectTrack, Stop). No conoce nada de USB, ALSA, ni del controlador
-físico específicamente — solo recibe (canal, programa) ya decodificados por
-el Adapter.
+Translates standard MIDI events (Program Change) into abstract Core
+actions (SelectTrack, Stop). It knows nothing about USB, ALSA, or the
+physical controller specifically -- it only receives (channel, program)
+already decoded by the Adapter.
 
-Principio de portabilidad (acordado explícitamente con el usuario): esta
-lógica se basa ÚNICAMENTE en el valor final de Program Change. Nunca debe
-leer ni depender de ningún Control Change que un controlador mande
-internamente para sus propias combinaciones de botones (p. ej. cambio de
-grupo/banco) — ese CC es un detalle propio de cómo cada fabricante
-señaliza sus propios combos, no debe cruzar a esta capa. Así, cualquier
-controlador MIDI que mande Program Change 0-127 (por el medio que sea)
-funciona con este mismo Mapper sin cambios, sin depender de ninguna función
-propietaria.
+Portability principle (explicitly agreed with the user): this logic is
+based EXCLUSIVELY on the final Program Change value. It must never read
+or depend on any Control Change a controller sends internally for its own
+button combinations (e.g. switching group/bank) -- that CC is a detail
+specific to how each manufacturer signals its own combos, and it must not
+cross into this layer. This way, any MIDI controller that sends Program
+Change 0-127 (by whatever means) works with this same Mapper unchanged,
+with no dependence on any proprietary feature.
 
-Fórmula: PC = (grupo - 1) × tracks_per_group + offset, offset =
-0..(tracks_per_group - 1) según el footswitch (A=0, B=1, C=2, D=3).
+Formula: PC = (group - 1) * tracks_per_group + offset, offset =
+0..(tracks_per_group - 1) depending on the footswitch (A=0, B=1, C=2,
+D=3).
 
-Decisión de STOP (aprobada): el último footswitch de cada grupo (offset =
-tracks_per_group - 1) siempre se interpreta como STOP, sin importar el
-grupo/setlist activo — así STOP queda disponible al instante desde
-cualquier punto del show, sin sacrificar un modo o footswitch fuera del
-esquema normal de navegación. Costo aceptado: quedan (tracks_per_group - 1)
-tracks reales por setlist.
+STOP decision (approved): the last footswitch of every group (offset =
+tracks_per_group - 1) is always interpreted as STOP, regardless of the
+active group/setlist -- this way STOP is available instantly from any
+point in the show, without sacrificing a mode or footswitch outside the
+normal navigation scheme. Accepted cost: (tracks_per_group - 1) real
+tracks remain per setlist.
 
-Nota de diseño (marcada explícitamente para revisión del usuario): el
-diagrama de la sección 3 de MASTER_SPECIFICATION.md lista SELECT_SETLIST y
-SELECT_TRACK como acciones separadas. Esta implementación las combina en
-una sola acción SelectTrack(setlist, track), porque el Mapper nunca recibe
-un evento MIDI que signifique "solo cambió el setlist, sin track todavía"
-(el controlador no manda Program Change hasta que se presiona un
-footswitch real) — el Mapper se mantiene sin estado (stateless). Si el
-Core necesita reaccionar de forma distinta cuando cambia el setlist vs.
-cuando solo cambia el track dentro del mismo setlist, esa comparación de
-"¿cambió el setlist respecto al anterior?" le corresponde al Core, que sí
-mantiene estado de sesión — no al Mapper. Pendiente de que el usuario
-confirme si esta simplificación es aceptable o si prefiere que el Mapper
-emita las dos acciones por separado.
+Design note (explicitly flagged for the user's review): the diagram in
+section 3 of MASTER_SPECIFICATION.md lists SELECT_SETLIST and
+SELECT_TRACK as separate actions. This implementation combines them into
+a single SelectTrack(setlist, track) action, because the Mapper never
+receives a MIDI event that means "only the setlist changed, no track
+yet" (the controller doesn't send Program Change until an actual
+footswitch is pressed) -- the Mapper stays stateless. If the Core needs
+to react differently when the setlist changes vs. when only the track
+changes within the same setlist, that "did the setlist change from the
+previous one?" comparison belongs to the Core, which does keep session
+state -- not to the Mapper. Pending the user's confirmation on whether
+this simplification is acceptable, or whether they'd rather the Mapper
+emit the two actions separately.
 
-Nota de hardware: esta fórmula y la lógica completa fueron diseñadas y
-validadas empíricamente contra un controlador MIDI real, un M-VAVE PD41
-(ver MAVAVE_ANALYSIS.md y la validación en vivo en TESTING.md); funcionan
-igual con cualquier otro controlador MIDI que envíe Program Change 0-127 en
-este mismo formato, sin cambios de código.
+Hardware note: this formula and the whole logic were designed and
+empirically validated against a real MIDI controller, an M-VAVE PD41
+(see MAVAVE_ANALYSIS.md and the live validation in TESTING.md); they work
+the same with any other MIDI controller that sends Program Change 0-127
+in this same format, with no code changes.
 """
 
 from .actions import SelectTrack, Stop
@@ -55,20 +55,21 @@ class Mapper:
     def __init__(self, tracks_per_group: int = 4):
         if tracks_per_group < 2:
             raise ValueError(
-                "tracks_per_group debe ser >= 2 (se necesita al menos "
-                "1 track real + 1 reservado para STOP)"
+                "tracks_per_group must be >= 2 (at least 1 real track + "
+                "1 reserved for STOP is needed)"
             )
         self.tracks_per_group = tracks_per_group
         self._stop_offset = tracks_per_group - 1
 
     def map_program_change(self, program: int):
-        """Traduce un número de Program Change (0-127) a una acción abstracta.
+        """Translates a Program Change number (0-127) into an abstract
+        action.
 
-        Devuelve una instancia de Stop o SelectTrack. No devuelve None:
-        todo Program Change válido (0-127) produce una acción.
+        Returns a Stop or SelectTrack instance. Never returns None: every
+        valid Program Change (0-127) produces an action.
         """
         if not (0 <= program <= 127):
-            raise ValueError(f"Program Change fuera de rango: {program}")
+            raise ValueError(f"Program Change out of range: {program}")
 
         group_index, offset = divmod(program, self.tracks_per_group)
 

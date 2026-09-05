@@ -1,3 +1,3 @@
-from .mvave_adapter import MVaveAdapter, DispositivoNoEncontrado
+from .mvave_adapter import MVaveAdapter, DeviceNotFoundError
 
-__all__ = ["MVaveAdapter", "DispositivoNoEncontrado"]
+__all__ = ["MVaveAdapter", "DeviceNotFoundError"]

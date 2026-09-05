@@ -1,185 +1,198 @@
-# MAVAVE_ANALYSIS.md — Análisis del controlador M-VAVE (modelo PD41)
+# MAVAVE_ANALYSIS.md — M-VAVE controller analysis (PD41 model)
 
-**Estado: recomendación completa lista para revisión y aprobación (sección 6) — no implementada todavía.**
+**Status: full recommendation ready for review and approval (section 6) — not implemented yet.**
 
 ---
 
-## 1. Capacidades según el manual (`PD41-Software-Instructions.pdf`)
+## 1. Capabilities per the manual (`PD41-Software-Instructions.pdf`)
 
-El dispositivo se configura desde una **app de teléfono del fabricante, por Bluetooth** — no hay ninguna indicación de que esto se pueda hacer desde la Raspberry Pi. Dato importante confirmado por el usuario: **la configuración por Bluetooth funciona simultáneamente mientras el USB sigue conectado a la Raspberry Pi** — no hace falta desconectarlo para reconfigurar en vivo.
+The device is configured from a **manufacturer's phone app, over Bluetooth** — there's no indication this can be done from the Raspberry Pi. Important fact confirmed by the user: **Bluetooth configuration works simultaneously while the USB stays connected to the Raspberry Pi** — no need to disconnect it to reconfigure live.
 
-Hardware físico real (confirmado con foto, no coincide 1:1 con los diagramas del manual): **4 pedales (A, B, C, D)**. "E" y "F" no son pedales separados — son etiquetas impresas entre A-B y entre C-D, correspondientes a presionar esos dos pedales **simultáneamente**.
+Real physical hardware (confirmed with a photo, doesn't match the manual's diagrams 1:1): **4 footswitches (A, B, C, D)**. "E" and "F" are not separate footswitches — they are labels printed between A-B and between C-D, corresponding to pressing those two footswitches **simultaneously**.
 
-12 modos de operación, seleccionables solo desde la app:
+12 operating modes, selectable only from the app:
 
-| # | Modo | ¿Es MIDI estándar? |
+| # | Mode | Standard MIDI? |
 |---|---|---|
-| 1 | Program Change A (PC) | Sí |
-| 2 | Program Change B (CC) | Sí |
-| 3 | Custom Control (CC) | Sí |
-| 4 | Advanced Custom Mode 1 (PC/CC/Note/SysEx, 5 sub-modos) | Sí |
-| 5 | Advanced Custom Mode 2 (igual que 4 + cambio de grupo E/F, hasta 16 grupos) | Sí |
-| 6 | Manufacturer Control | **No usar** — control propietario de otros productos M-VAVE (TANK-G, LOOPER PRO, LOST TEMPO) |
-| 7 | Touchscreen (swipe gestures) | **No** — es HID, no MIDI |
-| 8 | Video (rewind/play/pause/loop, requiere extensión de Chrome) | **No** — HID |
-| 9-10 | Keyboard A/B | **No** — HID teclado |
+| 1 | Program Change A (PC) | Yes |
+| 2 | Program Change B (CC) | Yes |
+| 3 | Custom Control (CC) | Yes |
+| 4 | Advanced Custom Mode 1 (PC/CC/Note/SysEx, 5 sub-modes) | Yes |
+| 5 | Advanced Custom Mode 2 (same as 4 + E/F group switching, up to 16 groups) | Yes |
+| 6 | Manufacturer Control | **Do not use** — proprietary control for other M-VAVE products (TANK-G, LOOPER PRO, LOST TEMPO) |
+| 7 | Touchscreen (swipe gestures) | **No** — it's HID, not MIDI |
+| 8 | Video (rewind/play/pause/loop, requires a Chrome extension) | **No** — HID |
+| 9-10 | Keyboard A/B | **No** — HID keyboard |
 | 11 | Multimedia keys | **No** — HID |
-| 12 | Custom keyboard (combinaciones) | **No** — HID |
+| 12 | Custom keyboard (combinations) | **No** — HID |
 
-**Importante:** en los modos 7-12 el M-VAVE probablemente no se presente ante la Raspberry Pi como dispositivo MIDI en absoluto (se comporta como teclado/mouse USB). Solo los modos 1-5 son viables para este proyecto.
-
----
-
-## 2. Validación empírica (sección 4.1.1) — manual vs. comportamiento real medido
-
-Metodología: M-VAVE conectado por USB directo a la Raspberry Pi, captura en vivo con `aseqdump -p 20:0` (puerto ALSA `SINCO MIDI 1`), pulsaciones físicas realizadas por el usuario en tiempo real mientras se correlacionaban con el log.
-
-### Modo "Advanced Custom Mode 1" — ⚠️ nota de contexto importante
-
-**Esta configuración específica (notas 36/38/40, D como note-off masivo) es la configuración personalizada preexistente del usuario para otro sistema MIDI ajeno a este proyecto — no es el comportamiento de fábrica/genérico del modo.** No debe interpretarse como validación del manual para "Advanced Custom Mode 1" en general, solo como evidencia de que el modo permite ese tipo de configuración asimétrica. Para validar el manual genuinamente en este modo (por ejemplo, el sub-modo "Long Press") haría falta reconfigurar un footswitch de cero, lo cual pisaría la configuración existente del usuario para su otro sistema — pendiente de decidir si se justifica hacerlo.
-
-
-
-| Acción | Manual dice | Realmente medido |
-|---|---|---|
-| Pulsar A | Envía un código MIDI correspondiente | `Note On, canal 0, nota 36, velocity 127` |
-| Pulsar B | ídem | `Note On, canal 0, nota 38, velocity 127` |
-| Pulsar C | ídem | `Note On, canal 0, nota 40, velocity 127` |
-| Pulsar D | ídem (se esperaría nota propia, ej. 42) | **No manda nota propia — manda `Note Off` de las notas 36, 38 y 40 a la vez** (equivale a "soltar todo") |
-| Soltar A/B/C | (no documentado explícitamente para este sub-modo) | **Nunca llega `Note Off`** al soltar — el manual describe este comportamiento como "Single Tap": un solo código por toque, sin evento de liberación |
-| E (A+B simultáneo) | Cambia de grupo (según Modo 4 general) | **Sin efecto, ningún mensaje MIDI** — coincide con "Mode 4: Switching Groups: Cannot switch banks using buttons E and F" |
-| F (C+D simultáneo) | ídem | **Sin efecto**, igual que E |
-
-**Discrepancia/hallazgo no documentado:** el botón D actuando como "note-off masivo" de A/B/C no aparece descrito en el manual — es una configuración específica que alguien (probablemente de fábrica) le dio a D en este sub-modo, no un comportamiento genérico del modo. Relevante para el diseño de STOP (sección 4.5): un patrón similar podría usarse deliberadamente para una acción "detener todo".
-
-### Modo "Program Change A"
-
-| Acción | Manual dice | Realmente medido |
-|---|---|---|
-| Pulsar A (grupo 1) | PC 0-127 según grupo | `Program Change, canal 0, programa 0` ✅ coincide |
-| Pulsar B (grupo 1) | — | `Program Change, programa 1` ✅ |
-| Pulsar C (grupo 1) | — | `Program Change, programa 2` ✅ |
-| Pulsar D (grupo 1) | — | `Program Change, programa 3` ✅ |
-| E (A+B) — cambiar de grupo | "Use buttons E and F to switch groups" | Confirmado: manda `Control Change, controlador 2, valor N` (N parece ser un contador interno de grupo, offset no confirmado con precisión — no es necesariamente igual al número mostrado en pantalla) |
-| Pulsar A en grupo mostrado como "7" | Debería seguir el patrón de grupos | `Program Change, programa 24` — **confirma la fórmula `PC = (grupo_mostrado - 1) × 4 + offset(A=0,B=1,C=2,D=3)`** |
-| Pulsar B/C/D en grupo "7" | — | `25, 26, 27` — ✅ confirma la fórmula exactamente |
-| Display mostrando el "código PC específico" | El manual dice literalmente: *"Display: The specific PC code will be shown on the display screen"* | **Discrepancia real:** la pantalla muestra **"grupo+letra"** (ej. `7A`, `7b`, `7c`, `7d`), **no el número crudo del PC** (24, 25, 26, 27). El manual describe mal este comportamiento. |
-
-**Conclusión parcial de este modo:** muy predecible, matemáticamente limpio, y el más fácil de mapear en el Mapper sin ambigüedad — buen candidato para las alternativas A/C de la sección 4.2.
-
-**Hallazgo sobre pulsación larga (relevante para STOP, sección 4.5):** en "Program Change A", **una pulsación larga (2-3s) no manda ningún mensaje MIDI** — solo se reconocen toques cortos. Confirmado dos veces (con y sin buffering de la herramienta de captura descartado como causa), y confirmado que el botón sigue funcionando normal para toques cortos inmediatamente después. Esto implica que **los modos 1/2 (Program Change A/B) no sirven por sí solos para implementar un STOP por pulsación larga** — para eso hace falta usar Advanced Custom Mode 1/2 con un footswitch configurado explícitamente en su sub-modo "Long Press" o "Short Tap-Long Press".
-
-### Modo "Program Change B"
-
-| Acción | Manual dice | Realmente medido |
-|---|---|---|
-| Pulsar A (grupo 1) | Manda códigos **CC**, de `CC(0,0)` a `CC(127,0)` | `Program Change, canal 0, programa 0` — **idéntico a Program Change A, no es CC** |
-| Pulsar B/C/D (grupo 1) | ídem | `Program Change, programa 1, 2, 3` — mismo patrón que Program Change A |
-
-**Discrepancia confirmada y significativa:** contrario a lo que dice el manual, "Program Change B" **no manda códigos CC** — a nivel de mensaje MIDI es indistinguible de "Program Change A" en las pruebas realizadas (grupo 1, pulsación corta). Procedimiento descartado como causa (el usuario confirmó que el cambio de modo en la app se refleja de inmediato en la pantalla física del pedal, sin pasos adicionales de sincronización). No se ha encontrado todavía bajo qué condición este modo produciría un mensaje distinto al de "Program Change A" — pendiente de seguir investigando si se prioriza aclarar esto.
-
-### Modo "Custom Control"
-
-| Acción | Manual dice | Realmente medido |
-|---|---|---|
-| Pulsar A (1er toque) | Footswitch [A] preasignado a "Bank Select MSB" (CC0) en la captura del manual | `Control Change, canal 0, controlador 0, valor 127` ✅ coincide |
-| Pulsar A (2do toque) | "Clicking on the corresponding footswitch will send a toggle code" | `Control Change, controlador 0, valor 0` ✅ **confirma el toggle 127/0 exactamente como describe el manual** |
-| Pantalla mientras se mantiene presionado | No documentado | Muestra un guion **"—"** temporal mientras el botón está físicamente presionado, vuelve al valor normal al soltar |
-
-**Conclusión de este modo:** el único de los tres validados hasta ahora donde el comportamiento coincide 100% con el manual, sin discrepancias.
+**Important:** in modes 7-12 the M-VAVE probably doesn't present itself to the Raspberry Pi as a MIDI device at all (it behaves as a USB keyboard/mouse). Only modes 1-5 are viable for this project.
 
 ---
 
-## 3. Capacidad real de la pantalla física (2 caracteres, no solo numérica)
+## 2. Empirical validation (section 4.1.1) — manual vs. measured real behavior
 
-Confirmado con fotos del dispositivo físico: la pantalla puede mostrar **letras además de números** (se observó `2d`, `11`, `1A`, `7A`, `7b`, `7c`, `7d`). Es de 2 caracteres. Contradice cualquier suposición de que fuera puramente numérica de 2 dígitos — es alfanumérica (7 u 14 segmentos, no confirmado cuál, pero el repertorio de caracteres incluye al menos dígitos y algunas letras minúsculas/mayúsculas).
+Methodology: M-VAVE connected via USB directly to the Raspberry Pi, live capture with `aseqdump -p 20:0` (ALSA port `SINCO MIDI 1`), physical presses performed by the user in real time while correlating with the log.
 
----
+### "Advanced Custom Mode 1" — ⚠️ important context note
 
-## 4.5 Análisis de STOP (mecanismo más robusto)
+**This specific configuration (notes 36/38/40, D as a mass note-off) is the user's pre-existing custom configuration for another MIDI system unrelated to this project — it is not the factory/generic behavior of the mode.** It should not be interpreted as validating the manual for "Advanced Custom Mode 1" in general, only as evidence that the mode allows that kind of asymmetric configuration. To genuinely validate the manual in this mode (for example, the "Long Press" sub-mode) a footswitch would need to be reconfigured from scratch, which would overwrite the user's existing configuration for their other system — pending a decision on whether that's worth doing.
 
-Evidencia empírica recolectada específicamente para esta decisión:
-
-| Mecanismo candidato | Resultado real | Viable para STOP |
+| Action | Manual says | Actually measured |
 |---|---|---|
-| Pulsación larga en Program Change A/B | **No manda ningún MIDI** — confirmado dos veces | ❌ No |
-| Pulsación larga en Custom Control | Se comporta igual que una corta (un solo toggle) | ❌ No aporta nada distinto |
-| Combinación de 2 botones simultáneos (A+B) | **No genera ningún código de combinación** — cada botón manda su propio CC de forma independiente. Se observó además un posible rebote mecánico (doble toggle) en uno de los dos botones durante la prueba | ❌ No hay atajo de hardware; habría que detectarlo por software con ventanas de tiempo — más frágil, y menos "fiable" como pide la sección 4.3 |
-| Combinación de 4 botones simultáneos | **Descartado sin probar — no es físicamente realista para un músico en vivo** (confirmado por el usuario: máximo 2 pedales a la vez, uno por pie) | ❌ Descartado por ergonomía, no por MIDI |
-| Un footswitch dedicado a un único CC fijo en Custom Control | Comportamiento limpio y 100% predecible (validado arriba) | ✅ **Sí** |
-| Sub-modo "Short Tap-Long Press" de Advanced Custom Mode 1 (config. existente del usuario para otro sistema) | Manual: "Sends two different MIDI codes with a short tap and a long press" | ✅ **Confirmado real, en dos botones distintos**: D corto → `Note Off` (36/38/40) / D largo → `Program Change 3`. A corto → `Note On 36` / A largo → `Program Change 0`. Patrón consistente, no es un caso aislado de un solo botón. |
+| Press A | Sends a corresponding MIDI code | `Note On, channel 0, note 36, velocity 127` |
+| Press B | same | `Note On, channel 0, note 38, velocity 127` |
+| Press C | same | `Note On, channel 0, note 40, velocity 127` |
+| Press D | same (a distinct note would be expected, e.g. 42) | **Doesn't send its own note — sends `Note Off` for notes 36, 38, and 40 at once** (equivalent to "release everything") |
+| Release A/B/C | (not explicitly documented for this sub-mode) | **`Note Off` never arrives** on release — the manual describes this behavior as "Single Tap": a single code per tap, no release event |
+| E (A+B simultaneous) | Changes group (per general Mode 4) | **No effect, no MIDI message** — matches "Mode 4: Switching Groups: Cannot switch banks using buttons E and F" |
+| F (C+D simultaneous) | same | **No effect**, same as E |
 
-### Recomendación preliminar de STOP (actualizada)
+**Undocumented discrepancy/finding:** button D acting as a "mass note-off" for A/B/C is not described in the manual — it's a specific configuration someone (probably at the factory) gave D in this sub-mode, not a generic behavior of the mode. Relevant to the STOP design (section 4.5): a similar pattern could be used deliberately for a "stop everything" action.
 
-El hallazgo del botón D (short tap vs. long press mandando mensajes distintos) **reabre la pulsación larga como mecanismo viable**, siempre que se use el sub-modo "Short Tap-Long Press" de Advanced Custom Mode (no los modos simples 1/2/3, donde ya confirmamos que la pulsación larga no manda nada). Quedan dos opciones robustas, con un trade-off real dado que solo hay **4 footswitches físicos en total**:
+### "Program Change A" mode
 
-| Opción | Ventaja | Costo |
+| Action | Manual says | Actually measured |
 |---|---|---|
-| **(a)** Footswitch dedicado exclusivamente a un CC fijo en Custom Control | Más simple de implementar en el Mapper (una sola condición, sin temporización) | Sacrifica un footswitch completo solo para STOP — quedan 3 para todo lo demás (setlist/track/play/next) |
-| **(b)** Un footswitch en modo "Short Tap-Long Press": toque corto = función normal (ej. NEXT), toque largo = STOP | Aprovecha el mismo footswitch para dos funciones — quedan los 4 disponibles para uso normal, STOP "gratis" encima de uno de ellos | Depende de que el Mapper distinga confiablemente corto vs. largo (más lógica que un CC plano, aunque el propio M-VAVE ya hace esa distinción en hardware, no el Mapper) |
+| Press A (group 1) | PC 0-127 depending on group | `Program Change, channel 0, program 0` ✅ matches |
+| Press B (group 1) | — | `Program Change, program 1` ✅ |
+| Press C (group 1) | — | `Program Change, program 2` ✅ |
+| Press D (group 1) | — | `Program Change, program 3` ✅ |
+| E (A+B) — change group | "Use buttons E and F to switch groups" | Confirmed: sends `Control Change, controller 2, value N` (N appears to be an internal group counter, offset not precisely confirmed — not necessarily equal to the number shown on the display) |
+| Press A in the group shown as "7" | Should follow the group pattern | `Program Change, program 24` — **confirms the formula `PC = (displayed_group - 1) × 4 + offset(A=0,B=1,C=2,D=3)`** |
+| Press B/C/D in group "7" | — | `25, 26, 27` — ✅ confirms the formula exactly |
+| Display showing the "specific PC code" | The manual literally says: *"Display: The specific PC code will be shown on the display screen"* | **Real discrepancy:** the display shows **"group+letter"** (e.g. `7A`, `7b`, `7c`, `7d`), **not the raw PC number** (24, 25, 26, 27). The manual describes this behavior incorrectly. |
 
-Ambas minimizan la dependencia de funciones propietarias (CC y PC/Note son MIDI estándar en los dos casos) y son portables a otro controlador futuro. La decisión entre (a) y (b) depende de cuántos footswitches necesita realmente la estrategia final de navegación (sección 4.2) — **pendiente de esa comparación antes de recomendar una sola opción**, no se decide aquí.
+**⚠️ Important correction (2026-09-05, later live validation session): there are only 8 real groups, not 32.** The original capacity calculation (32 groups × 4 = 128 combinations) assumed the full Program Change range (0-127) is split into 32 groups of 4. Validated live with real hardware that **the group counter cycles with a period of 8**, not 32:
 
----
+| Action | Measured result |
+|---|---|
+| From displayed group "1", press E repeatedly down to the lower limit | Reaches displayed group "8" (doesn't stay at "1", doesn't keep decreasing) |
+| Press F from group "8" | Goes back to group "1" — wraparound confirmed |
+| Press A in group "8" (display stable, not blinking) | `Program Change, program 28` — matches the formula `(8-1)×4+0=28`, confirming that "8" is a real, valid group |
+| Press A in group "1" after the wraparound from "8" | `Program Change, program 0` — identical to the original "1A", confirming the cycle genuinely returns to the same group 1 |
 
-## 4.2-4.4 Comparación de alternativas y recomendación
+This matches a piece of text from the app itself (Advanced device control) that had been dismissed earlier as an ambiguous translation: *"A total of 8 groups of 32 timbre"* — the correct reading is **8 groups, 32 total PC values used** (8×4=32), not "32 groups." The PC range actually used by this mode is **0-31**, never 32-127, no matter how many times E/F is pressed.
 
-### Restricción física real (no estaba en el manual)
+**Impact on maximum capacity:** with D reserved for STOP in every group (already-approved decision, section 4.5), the real capacity is `8 groups × 3 real songs (A,B,C) = 24 songs maximum`, not 96 as previously calculated. This is not enough for the band's real repertoire (~25-30 songs) — it reopens the strategy discussion, see the follow-up discussion in the chat with the user.
 
-Solo hay **4 footswitches físicos** (A-D). "E" y "F" no son botones aparte — son combinaciones A+B y C+D. Esto acota mucho el espacio de diseño: cualquier alternativa tiene que repartir 4 acciones físicas (más cambio de grupo vía E/F donde esté disponible) entre selección de setlist, selección de track, y STOP.
+*Process note: during this test, a brief episode of erratic MIDI messages was observed (a burst of Control Change on controllers 2/3, and channel-reset messages 124-127) coinciding with a dropped ALSA connection between the M-VAVE and the listener process on the Raspberry Pi — initially interpreted as a possible invalid firmware state, but after a clean reconnection the behavior was deterministic and reproducible (confirmed twice). This is attributed to a USB/MIDI reconnection hiccup, not to the pedal's group logic.*
 
-### Evaluación de las 4 alternativas contra la evidencia real
+**Partial conclusion for this mode:** very predictable, mathematically clean, and the easiest to map in the Mapper without ambiguity — a good candidate for alternatives A/C in section 4.2. **Corrected maximum capacity: 24 songs (8 groups × 3), not 96.**
 
-**Alternativa A — Bank/Group → Setlist; Footswitch → Track:**
-Es literalmente lo que el modo "Program Change A" ya hace de fábrica: E/F cambia de grupo (validado: manda `CC controlador 2`, valor de grupo), y A-D dentro de un grupo mandan `Program Change = (grupo-1)×4 + offset`. La pantalla física **muestra directamente "grupo+letra"** (ej. `7A`), dando al músico retroalimentación clara de en qué setlist/track está — esto pesa "Muy alto" en la sección 4.3 y aquí está resuelto por el propio hardware, no hay que construirlo. Con 32 grupos × 4 tracks, cubre 128 combinaciones (coincide con "128 timbres" del manual).
+**Finding about long press (relevant to STOP, section 4.5):** in "Program Change A," **a long press (2-3s) sends no MIDI message at all** — only short taps are recognized. Confirmed twice (with capture-tool buffering ruled out as a cause), and confirmed that the button keeps working normally for short taps immediately afterward. This implies that **modes 1/2 (Program Change A/B) cannot by themselves implement a long-press STOP** — that requires using Advanced Custom Mode 1/2 with a footswitch explicitly configured in its "Long Press" or "Short Tap-Long Press" sub-mode.
 
-**Alternativa B — Program Change → selección global:**
-Es una versión "sin estructura" de lo mismo: tratar los 128 valores de PC como un espacio plano, sin distinguir setlist de track a nivel conceptual. Funciona igual de bien a nivel MIDI, pero **desaprovecha la retroalimentación de pantalla** (que ya viene naturalmente estructurada como grupo+letra) y le pasa al Mapper la responsabilidad de imponer una jerarquía que el hardware ya da gratis. No se recomienda frente a A.
+### "Program Change B" mode
 
-**Alternativa C — Bank/Group → Setlist; PC/CC → Track:**
-Muy similar a A. La única diferencia real sería usar CC en vez de PC para el track — pero **ya confirmamos que "Program Change B" (el modo pensado para CC) en realidad manda Program Change, no CC** (discrepancia real del manual, sección 2 de este documento). Esto le quita fuerza a la premisa de "usar CC para track" como algo distinto de la alternativa A — en la práctica, terminaría siendo lo mismo que A.
+| Action | Manual says | Actually measured |
+|---|---|---|
+| Press A (group 1) | Sends **CC** codes, from `CC(0,0)` to `CC(127,0)` | `Program Change, channel 0, program 0` — **identical to Program Change A, not CC** |
+| Press B/C/D (group 1) | same | `Program Change, program 1, 2, 3` — same pattern as Program Change A |
 
-**Alternativa D — CC/Note → acciones abstractas (sin bancos):**
-Es lo que vimos en modo "Custom Control": cada footswitch es un toggle CC independiente, totalmente flexible, sin concepto de banco. Pero **la pantalla no muestra información útil en este modo** (solo `00` y un guion temporal al presionar) — pierde por completo el criterio "Información visible en la pantalla" (Muy alto). Es la opción más flexible para acciones puntuales (por eso la usamos para pensar STOP), pero no para navegar setlists/tracks en vivo.
+**Confirmed, significant discrepancy:** contrary to what the manual says, "Program Change B" **does not send CC codes** — at the MIDI message level it is indistinguishable from "Program Change A" in the tests performed (group 1, short press). Procedure ruled out as the cause (the user confirmed that switching modes in the app is reflected immediately on the pedal's physical display, with no extra sync steps). No condition has yet been found under which this mode would produce a message different from "Program Change A" — pending further investigation if clarifying this becomes a priority.
 
-### Recomendación final
+### "Custom Control" mode
 
-**Recomendamos la Alternativa A (Bank/Group M-VAVE = Setlist; Footswitch = Track), implementada sobre el modo "Program Change A".** Razones, con respaldo de evidencia real medida (no del manual):
+| Action | Manual says | Actually measured |
+|---|---|---|
+| Press A (1st tap) | Footswitch [A] pre-assigned to "Bank Select MSB" (CC0) in the manual's capture | `Control Change, channel 0, controller 0, value 127` ✅ matches |
+| Press A (2nd tap) | "Clicking on the corresponding footswitch will send a toggle code" | `Control Change, controller 0, value 0` ✅ **confirms the 127/0 toggle exactly as the manual describes** |
+| Display while held down | Not documented | Shows a temporary dash **"—"** while the button is physically held, returns to the normal value on release |
 
-1. **Información en pantalla resuelta por hardware**: el músico ve "grupo+letra" sin que nosotros construyamos nada — cumple el criterio de mayor peso sin esfuerzo de ingeniería.
-2. **Predecibilidad matemática total**: `PC = (grupo-1)×4 + offset`, validado con múltiples pulsaciones reales, sin ambigüedad.
-3. **100% MIDI estándar** (Program Change), sin depender de las funciones propietarias del fabricante (Modo 6) ni de configuración vía Bluetooth para la operación normal en vivo.
-4. **Compatibilidad futura**: cualquier controlador MIDI que pueda mandar Program Change + algún medio de cambiar de "banco" sirve como reemplazo, sin tocar el Core (la equivalencia grupo=setlist vive en el Adapter/Mapper, como exige la sección 3).
-5. Limitación real a documentar: 4 tracks por setlist. Si esto resulta insuficiente para las canciones reales de NO FUTURO, es un costo conocido de esta alternativa, no una sorpresa.
-
-**STOP** (ver sección 4.5 arriba): se descarta la variante "Advanced Custom Mode 2 + long press" por tres motivos confirmados:
-1. No existe un segundo slot libre de Advanced Custom Mode independiente del ya configurado por el usuario para otro sistema — probarlo implicaría modificar esa configuración existente.
-2. Ese modo no ofrece la retroalimentación de pantalla (grupo+letra) que sí da Program Change A.
-3. Más importante: **STOP debe estar disponible al instante desde cualquier punto del show**, sin depender de en qué setlist/track esté el músico. Cualquier mecanismo atado a la navegación normal (un footswitch específico dentro del esquema de grupos, o un valor de PC reservado al que haya que "llegar" navegando) viola ese requisito de máxima prioridad de la sección 2.
-
-**Recomendación final de STOP: dedicar un footswitch físico completo, exclusivamente a STOP, fuera del esquema de navegación de setlist/track.** Costo aceptado: quedan 3 footswitches para tracks en vez de 4 (32 setlists × 3 tracks = 96 combinaciones en vez de 128) — es el precio de que STOP sea verdaderamente inmediato e independiente del estado de navegación, que es justo el criterio de mayor peso ("Fiabilidad del STOP permanente: Muy alto") en la sección 4.3. El footswitch STOP dedicado mandaría un código MIDI estándar fijo (ej. una Note On o CC específica en un canal separado), interpretado por el Mapper como la acción abstracta STOP sin importar el grupo/contexto activo — no requiere cambiar de modo en el M-VAVE ni tocar la configuración existente del usuario.
-
-### Principio de diseño explícito para portabilidad futura (compromiso de arquitectura)
-
-Para que esta recomendación cumpla de verdad con "compatibilidad futura con otro controlador" (sección 4.3), el Mapper **debe calcular setlist/track únicamente a partir del valor final de Program Change recibido** (`setlist = PC÷4 + 1`, `track = PC%4`), **sin depender del mensaje `Control Change, controlador 2` que el M-VAVE manda internamente al usar la combinación E/F**. Ese CC es un detalle específico de cómo el M-VAVE señaliza sus propios combos de botones — no debe cruzar al Mapper como una fuente de verdad, solo el Program Change final importa. Así, reemplazar el M-VAVE por otro controlador que también mande Program Change (por el medio que sea: pads directos, menú, otro esquema de bancos) no requiere tocar el Mapper ni el Core — solo el Adapter específico de ese nuevo hardware, y solo si cambia la cantidad de botones por grupo (el "×4" de la fórmula).
-
-**No implementar todavía** — esto es una propuesta para aprobación, según el flujo de la sección 6.
+**Conclusion for this mode:** the only one of the three validated so far where behavior matches the manual 100%, with no discrepancies.
 
 ---
 
-## 4. Pendiente de validar (no completado en esta sesión)
+## 3. Real capacity of the physical display (2 characters, not just numeric)
 
-- Modo "Program Change B" (CC) — comportamiento exacto de `CC(n,0)`.
-- Modo "Custom Control" (Mode 3) — el toggle descrito (`CC(1,1)` / `CC(1,0)` alternado).
-- Modo "Advanced Custom Mode 2" — cambio de grupo E/F con hasta 16 grupos.
-- Sub-modo "Long Press" / "Short Tap-Long Press" de Advanced Custom Mode 1/2 — **decisión explícita del usuario: se salta por ahora**, para no pisar su configuración existente de Advanced Custom Mode 1 (usada en otro sistema MIDI ajeno a este proyecto). Si se retoma, usar Advanced Custom Mode 2 (libre) en vez de reconfigurar el 1.
-- Mecanismo de STOP (sección 4.5) — análisis separado, todavía no iniciado.
-- Dirección inversa: si se le puede mandar algo desde la Raspberry Pi al M-VAVE que produzca una reacción visible (SysEx u otro).
-- Comparación formal contra la tabla de criterios de la sección 4.3 y recomendación final (sección 4.4) — prematuro hasta completar lo anterior.
+Confirmed with photos of the physical device: the display can show **letters in addition to numbers** (`2d`, `11`, `1A`, `7A`, `7b`, `7c`, `7d` were observed). It has 2 characters. This contradicts any assumption that it was purely 2-digit numeric — it is alphanumeric (7- or 14-segment, not confirmed which, but the character set includes at least digits and some lower/uppercase letters).
 
 ---
 
-## 5. Notas de proceso relevantes
+## 4.5 STOP analysis (most robust mechanism)
 
-- El M-VAVE puede reconfigurarse desde la app de celular por Bluetooth **sin desconectarlo del USB** de la Raspberry Pi — reduce fricción para seguir probando modos.
-- Aparece ante Linux como dispositivo MIDI USB estándar, nombre reportado: `SINCO` (chip Jieli Technology según `lsusb`) — no reporta el nombre "M-VAVE" a nivel USB/ALSA.
+Empirical evidence collected specifically for this decision:
+
+| Candidate mechanism | Real result | Viable for STOP |
+|---|---|---|
+| Long press in Program Change A/B | **Sends no MIDI at all** — confirmed twice | ❌ No |
+| Long press in Custom Control | Behaves the same as a short press (a single toggle) | ❌ Doesn't offer anything different |
+| Simultaneous 2-button combination (A+B) | **Generates no combination code** — each button sends its own CC independently. A possible mechanical bounce (double toggle) was also observed on one of the two buttons during the test | ❌ No hardware shortcut; it would have to be detected in software with timing windows — more fragile, and less "reliable" than section 4.3 requires |
+| Simultaneous 4-button combination | **Discarded without testing — not physically realistic for a musician live** (confirmed by the user: at most 2 footswitches at once, one per foot) | ❌ Discarded for ergonomics, not for MIDI |
+| A footswitch dedicated to a single fixed CC in Custom Control | Clean, 100% predictable behavior (validated above) | ✅ **Yes** |
+| "Short Tap-Long Press" sub-mode of Advanced Custom Mode 1 (user's existing config for another system) | Manual: "Sends two different MIDI codes with a short tap and a long press" | ✅ **Confirmed real, on two different buttons**: short D → `Note Off` (36/38/40) / long D → `Program Change 3`. Short A → `Note On 36` / long A → `Program Change 0`. Consistent pattern, not a one-off on a single button. |
+
+### Preliminary STOP recommendation (updated)
+
+The finding about button D (short tap vs. long press sending different messages) **reopens long press as a viable mechanism**, provided the "Short Tap-Long Press" sub-mode of Advanced Custom Mode is used (not the simple modes 1/2/3, where we already confirmed a long press sends nothing). Two robust options remain, with a real trade-off given there are only **4 physical footswitches in total**:
+
+| Option | Advantage | Cost |
+|---|---|---|
+| **(a)** A footswitch dedicated exclusively to a fixed CC in Custom Control | Simpler to implement in the Mapper (a single condition, no timing) | Sacrifices an entire footswitch just for STOP — 3 remain for everything else (setlist/track/play/next) |
+| **(b)** A footswitch in "Short Tap-Long Press" mode: short tap = normal function (e.g. NEXT), long tap = STOP | Uses the same footswitch for two functions — all 4 remain available for normal use, STOP is "free" on top of one of them | Depends on the Mapper reliably telling short from long apart (more logic than a plain CC, although the M-VAVE itself already makes that distinction in hardware, not the Mapper) |
+
+Both minimize dependence on proprietary features (CC and PC/Note are standard MIDI in both cases) and are portable to a future controller. The choice between (a) and (b) depends on how many footswitches the final navigation strategy actually needs (section 4.2) — **pending that comparison before recommending a single option**, not decided here.
+
+---
+
+## 4.2-4.4 Comparison of alternatives and recommendation
+
+### Real physical constraint (not in the manual)
+
+There are only **4 physical footswitches** (A-D). "E" and "F" are not separate buttons — they are the A+B and C+D combinations. This narrows the design space considerably: any alternative has to split 4 physical actions (plus group switching via E/F where available) among setlist selection, track selection, and STOP.
+
+### Evaluating the 4 alternatives against the real evidence
+
+**Alternative A — Bank/Group → Setlist; Footswitch → Track:**
+This is literally what "Program Change A" mode already does out of the box: E/F changes group (validated: sends `CC controller 2`, group value), and A-D within a group send `Program Change = (group-1)×4 + offset`. The physical display **shows "group+letter" directly** (e.g. `7A`), giving the musician clear feedback about which setlist/track they're on — this carries "Very high" weight in section 4.3 and is already solved by the hardware itself, nothing to build. With **8 real groups** × 4 tracks (3 real + STOP), it covers 32 PC values — see the capacity correction in this mode's empirical validation section; this PD41's manual never mentions "128 timbres," that figure came from a different M-VAVE model.
+
+**Alternative B — Program Change → global selection:**
+This is an "unstructured" version of the same thing: treating the 128 PC values as a flat space, without conceptually distinguishing setlist from track. It works just as well at the MIDI level, but **wastes the display feedback** (which already comes naturally structured as group+letter) and shifts to the Mapper the responsibility of imposing a hierarchy the hardware already gives for free. Not recommended over A.
+
+**Alternative C — Bank/Group → Setlist; PC/CC → Track:**
+Very similar to A. The only real difference would be using CC instead of PC for the track — but **we already confirmed that "Program Change B" (the mode meant for CC) actually sends Program Change, not CC** (real manual discrepancy, section 2 of this document). This weakens the premise of "using CC for track" as something distinct from alternative A — in practice, it would end up being the same as A.
+
+**Alternative D — CC/Note → abstract actions (no banks):**
+This is what we saw in "Custom Control" mode: each footswitch is an independent CC toggle, fully flexible, with no bank concept. But **the display shows no useful information in this mode** (only `00` and a temporary dash when pressed) — it completely loses the "information visible on the display" criterion (Very high). It's the most flexible option for one-off actions (which is why we used it to think through STOP), but not for navigating setlists/tracks live.
+
+### Final recommendation
+
+**We recommend Alternative A (M-VAVE Bank/Group = Setlist; Footswitch = Track), implemented on top of "Program Change A" mode.** Reasons, backed by measured real evidence (not the manual):
+
+1. **On-display information solved by hardware**: the musician sees "group+letter" without us building anything — meets the highest-weighted criterion with no engineering effort.
+2. **Total mathematical predictability**: `PC = (group-1)×4 + offset`, validated with multiple real button presses, no ambiguity.
+3. **100% standard MIDI** (Program Change), with no dependence on the manufacturer's proprietary features (Mode 6) or on Bluetooth configuration for normal live operation.
+4. **Future compatibility**: any MIDI controller that can send Program Change plus some way of switching "banks" works as a replacement, without touching the Core (the group=setlist equivalence lives in the Adapter/Mapper, as required by section 3).
+5. Real limitation to document: 4 tracks per setlist. If this turns out to be insufficient for NO FUTURO's real songs, it's a known cost of this alternative, not a surprise.
+
+**STOP** (see section 4.5 above): the "Advanced Custom Mode 2 + long press" variant is discarded for three confirmed reasons:
+1. There is no second free Advanced Custom Mode slot independent of the one the user already configured for another system — testing it would mean modifying that existing configuration.
+2. That mode doesn't offer the display feedback (group+letter) that Program Change A does.
+3. More importantly: **STOP must be available instantly from any point in the show**, regardless of which setlist/track the musician is on. Any mechanism tied to normal navigation (a specific footswitch within the group scheme, or a reserved PC value you have to "navigate to") violates that highest-priority requirement from section 2.
+
+**Final STOP recommendation: dedicate one entire physical footswitch exclusively to STOP, outside the setlist/track navigation scheme.** Accepted cost: 3 footswitches remain for tracks instead of 4 (**8 real groups × 3 tracks = 24 combinations** — see the capacity correction above; the original "96 instead of 128" calculation assumed 32 groups, corrected to 8 groups after live validation) — that's the price of STOP being truly immediate and independent of navigation state, which is exactly the highest-weighted criterion ("Reliability of a permanent STOP: Very high") in section 4.3. The dedicated STOP footswitch would send a fixed standard MIDI code (e.g. a specific Note On or CC on a separate channel), interpreted by the Mapper as the abstract STOP action regardless of the active group/context — it requires no mode change on the M-VAVE and doesn't touch the user's existing configuration.
+
+### Explicit design principle for future portability (architectural commitment)
+
+For this recommendation to genuinely satisfy "future compatibility with another controller" (section 4.3), the Mapper **must compute setlist/track solely from the final received Program Change value** (`setlist = PC÷4 + 1`, `track = PC%4`), **without depending on the `Control Change, controller 2` message that the M-VAVE sends internally when using the E/F combination**. That CC is a detail specific to how the M-VAVE signals its own button combos — it must not cross into the Mapper as a source of truth, only the final Program Change matters. This way, replacing the M-VAVE with another controller that also sends Program Change (by whatever means: direct pads, a menu, a different bank scheme) requires no changes to the Mapper or the Core — only the Adapter specific to that new hardware, and only if the number of buttons per group changes (the "×4" in the formula).
+
+**Do not implement yet** — this is a proposal for approval, per the workflow in section 6.
+
+---
+
+## 4. Pending validation (not completed in this session)
+
+- "Program Change B" mode (CC) — exact behavior of `CC(n,0)`.
+- "Custom Control" mode (Mode 3) — the described toggle (`CC(1,1)` / `CC(1,0)` alternating).
+- "Advanced Custom Mode 2" — E/F group switching with up to 16 groups.
+- "Long Press" / "Short Tap-Long Press" sub-mode of Advanced Custom Mode 1/2 — **explicit user decision: skipped for now**, to avoid overwriting their existing Advanced Custom Mode 1 configuration (used for another MIDI system unrelated to this project). If revisited, use Advanced Custom Mode 2 (free) instead of reconfiguring Mode 1.
+- STOP mechanism (section 4.5) — separate analysis, not yet started.
+- Reverse direction: whether something can be sent from the Raspberry Pi to the M-VAVE that produces a visible reaction (SysEx or other).
+- Formal comparison against the criteria table in section 4.3 and final recommendation (section 4.4) — premature until the above is completed.
+
+---
+
+## 5. Relevant process notes
+
+- The M-VAVE can be reconfigured from the phone app over Bluetooth **without disconnecting it from the Raspberry Pi's USB** — reduces friction for continued mode testing.
+- It presents itself to Linux as a standard USB MIDI device, reported name: `SINCO` (Jieli Technology chip per `lsusb`) — it does not report the name "M-VAVE" at the USB/ALSA level.
