@@ -5,6 +5,8 @@
 [![Tests](https://github.com/hesner/pedal-de-secuencias/actions/workflows/tests.yml/badge.svg)](https://github.com/hesner/pedal-de-secuencias/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE)
 
+![Flujo de señal del hardware: pedalera M-VAVE PD41 hacia la Raspberry Pi 2, hacia una interfaz de audio USB Behringer y una pantalla HDMI, con un USB de biblioteca conectado](../images/hardware-blueprint.svg)
+
 Un controlador de pedalera MIDI basado en Raspberry Pi para disparar
 audio y video en vivo sobre el escenario. Construido para la banda
 **NO FUTURO**, diseñado para funcionar con cualquier controlador MIDI

@@ -5,6 +5,8 @@
 [![Tests](https://github.com/hesner/pedal-de-secuencias/actions/workflows/tests.yml/badge.svg)](https://github.com/hesner/pedal-de-secuencias/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+![Hardware signal flow: M-VAVE PD41 footswitch to Raspberry Pi 2, out to a Behringer USB audio interface and an HDMI display, with a library USB drive attached](docs/images/hardware-blueprint.svg)
+
 A Raspberry Pi–based MIDI footswitch controller for triggering audio and
 video live on stage. Built for the band **NO FUTURO**, designed to work
 with any standard MIDI controller — not tied to one specific pedal brand.
