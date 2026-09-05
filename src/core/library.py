@@ -10,7 +10,7 @@ Directory convention on the USB (agreed with the user):
     │   ├── Set 1/
     │   │   ├── A - Song name.mp3
     │   │   ├── B - Song name.mp4
-    │   │   └── C - Song name.mp3
+    │   │   └── C - Song name.wav
     │   └── Set 7/
     │       └── ...
     └── standby.mp4
@@ -18,6 +18,15 @@ Directory convention on the USB (agreed with the user):
 track 1/2/3 map to letters A/B/C respectively -- track 4 (D) never reaches
 this class in practice, since the Mapper already turns it into Stop()
 before the Core sees it.
+
+Supported file types (section 2 of MASTER_SPECIFICATION.md):
+- Video, with embedded audio: .mp4, .mov, .mpeg/.mpg
+- Audio-only: .mp3, .wav -- these behave the same way (the standby video
+  keeps looping on screen while the audio plays over it)
+
+resolve() reports which kind a file is via ResolvedTrack.is_audio_only,
+so the Core (via the Player) knows whether to switch the video or just
+overlay audio on top of the current standby loop.
 
 Robustness rule (explicitly requested by the user): if more than one
 folder matches the requested Set number (e.g. "Set 7" and "Set 07" both
@@ -35,16 +44,29 @@ matching the "never format/delete the library" requirement in section 2.
 import logging
 import os
 import re
+from dataclasses import dataclass
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 _TRACK_LETTERS = {1: "A", 2: "B", 3: "C"}
 _SET_FOLDER_RE = re.compile(r"^Set (\d+)$")
+_AUDIO_ONLY_EXTENSIONS = {"mp3", "wav"}
+_VIDEO_EXTENSIONS = {"mp4", "mov", "mpeg", "mpg"}
+_ALL_EXTENSIONS = _AUDIO_ONLY_EXTENSIONS | _VIDEO_EXTENSIONS
+
+
+@dataclass(frozen=True)
+class ResolvedTrack:
+    """What Library.resolve() hands back: a real file path plus enough
+    information for the Player to decide how to play it."""
+    path: str
+    is_audio_only: bool
 
 
 def _track_file_pattern(letter: str) -> re.Pattern:
-    return re.compile(rf"^{letter} - .+\.(mp3|mp4|mov|mpe?g)$", re.IGNORECASE)
+    extensions = "|".join(_ALL_EXTENSIONS)
+    return re.compile(rf"^{letter} - .+\.({extensions})$", re.IGNORECASE)
 
 
 class Library:
@@ -78,11 +100,11 @@ class Library:
 
         return show_path
 
-    def resolve(self, setlist: int, track: int) -> Optional[str]:
-        """Returns the absolute path to the media file for this
-        setlist/track, or None if it can't be found (missing show,
-        missing Set folder, or no file for that letter -- an empty slot
-        is a normal, expected situation, not an error)."""
+    def resolve(self, setlist: int, track: int) -> Optional[ResolvedTrack]:
+        """Returns a ResolvedTrack for this setlist/track, or None if it
+        can't be found (missing show, missing Set folder, or no file for
+        that letter -- an empty slot is a normal, expected situation, not
+        an error)."""
         letter = _TRACK_LETTERS.get(track)
         if letter is None:
             logger.warning(
@@ -107,7 +129,8 @@ class Library:
             )
             return None
 
-        return file_path
+        extension = file_path.rsplit(".", 1)[-1].lower()
+        return ResolvedTrack(path=file_path, is_audio_only=extension in _AUDIO_ONLY_EXTENSIONS)
 
     def _find_set_folder(self, show_path: str, setlist: int) -> Optional[str]:
         try:

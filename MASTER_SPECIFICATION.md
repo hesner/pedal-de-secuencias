@@ -32,9 +32,9 @@ These decisions are closed. Claude may ask for clarification, but must not propo
 | Audio interface | USB Behringer |
 | MIDI controller | Any standard USB MIDI controller capable of sending Program Change 0-127, without relying on proprietary features (architecture designed and empirically validated with an M-VAVE PD41 — see section 4, MAVAVE_ANALYSIS.md, and TESTING.md) |
 | Video output | HDMI, exclusively for the audience (not for the musician's monitoring) |
-| Audio | MP3 playback |
+| Audio | MP3 and WAV playback. Both are audio-only formats and behave identically: the standby video keeps looping on screen while the audio plays over it |
 | Video | MP4/MOV/MPEG, H.264 codec |
-| Audio-video sync | Video clips carry their audio embedded in the same file (not separate tracks). Video and audio of the same clip must **never drift out of sync**; this is a critical requirement, not merely desirable. The standalone MP3 (the "Audio" row) is for audio-only library items, unrelated to video-clip sync |
+| Audio-video sync | Video clips carry their audio embedded in the same file (not separate tracks). Video and audio of the same clip must **never drift out of sync**; this is a critical requirement, not merely desirable. Standalone MP3/WAV files (the "Audio" row) are for audio-only library items, unrelated to video-clip sync |
 | Idle mode | Standby video (`standby.mp4`) looping when nothing is playing |
 | Video transition | Must be smooth (no abrupt cuts) between clips and standby |
 | STOP | A global, highest-priority action; it must stop everything immediately |

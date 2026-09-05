@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
 from adapter import MVaveAdapter, DeviceNotFoundError  # noqa: E402
 from mapper import Mapper  # noqa: E402
-from core import Library, Player, Core  # noqa: E402
+from core import Library, Player, AudioPlayer, Core  # noqa: E402
 
 
 def parse_args():
@@ -58,7 +58,8 @@ def main():
     mapper = Mapper(tracks_per_group=4)
     library = Library(usb_root=args.usb_root)
     player = Player(standby_path=args.standby)
-    core = Core(library=library, player=player)
+    audio_player = AudioPlayer()
+    core = Core(library=library, player=player, audio_player=audio_player)
     core.start()
 
     try:
@@ -74,7 +75,7 @@ def main():
     except KeyboardInterrupt:
         logger.info("Exiting.")
     finally:
-        player.stop()
+        core.stop()
 
 
 if __name__ == "__main__":

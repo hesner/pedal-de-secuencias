@@ -1,7 +1,7 @@
 """
 Library tests. No hardware needed -- they build a temporary directory tree
 matching the USB convention agreed with the user and check that
-Library.resolve() finds the right files.
+Library.resolve() finds the right files and classifies them correctly.
 
 Run with: python -m pytest tests/test_library.py -v
 (or: python -m unittest tests/test_library.py)
@@ -53,10 +53,10 @@ class TestLibraryResolve(unittest.TestCase):
         self._write_active_show("Concert April 24")
 
         library = Library(self.usb_root)
-        path = library.resolve(setlist=7, track=1)
+        resolved = library.resolve(setlist=7, track=1)
 
-        self.assertIsNotNone(path)
-        self.assertTrue(path.endswith("A - Song One.mp3"))
+        self.assertIsNotNone(resolved)
+        self.assertTrue(resolved.path.endswith("A - Song One.mp3"))
 
     def test_track_2_maps_to_letter_B(self):
         _make_show(
@@ -67,9 +67,9 @@ class TestLibraryResolve(unittest.TestCase):
         self._write_active_show("Concert April 24")
 
         library = Library(self.usb_root)
-        path = library.resolve(setlist=1, track=2)
+        resolved = library.resolve(setlist=1, track=2)
 
-        self.assertTrue(path.endswith("B - Two.mp3"))
+        self.assertTrue(resolved.path.endswith("B - Two.mp3"))
 
     def test_missing_active_show_file_returns_none(self):
         library = Library(self.usb_root)
@@ -118,9 +118,9 @@ class TestLibraryResolve(unittest.TestCase):
         self._write_active_show("Concert April 24")
 
         library = Library(self.usb_root)
-        path = library.resolve(setlist=1, track=1)
+        resolved = library.resolve(setlist=1, track=1)
 
-        self.assertTrue(path.endswith("Active song.mp3"))
+        self.assertTrue(resolved.path.endswith("Active song.mp3"))
 
     def test_duplicate_set_folders_still_resolve_to_something(self):
         # Explicit rule requested by the user: if more than one folder
@@ -138,10 +138,10 @@ class TestLibraryResolve(unittest.TestCase):
         self._write_active_show("Concert April 24")
 
         library = Library(self.usb_root)
-        path = library.resolve(setlist=7, track=1)
+        resolved = library.resolve(setlist=7, track=1)
 
-        self.assertIsNotNone(path)
-        self.assertTrue(path.endswith(".mp3"))
+        self.assertIsNotNone(resolved)
+        self.assertTrue(resolved.path.endswith(".mp3"))
 
     def test_duplicate_track_files_still_resolve_to_something(self):
         # Same rule, applied to two files matching the same track letter
@@ -156,10 +156,37 @@ class TestLibraryResolve(unittest.TestCase):
         self._write_active_show("Concert April 24")
 
         library = Library(self.usb_root)
-        path = library.resolve(setlist=1, track=1)
+        resolved = library.resolve(setlist=1, track=1)
 
-        self.assertIsNotNone(path)
-        self.assertTrue(os.path.basename(path).startswith("A - "))
+        self.assertIsNotNone(resolved)
+        self.assertTrue(os.path.basename(resolved.path).startswith("A - "))
+
+    def test_mp3_is_classified_as_audio_only(self):
+        _make_show(self.usb_root, "Concert April 24", {1: {"A": "Song.mp3"}})
+        self._write_active_show("Concert April 24")
+
+        library = Library(self.usb_root)
+        resolved = library.resolve(setlist=1, track=1)
+
+        self.assertTrue(resolved.is_audio_only)
+
+    def test_wav_is_classified_as_audio_only(self):
+        _make_show(self.usb_root, "Concert April 24", {1: {"A": "Song.wav"}})
+        self._write_active_show("Concert April 24")
+
+        library = Library(self.usb_root)
+        resolved = library.resolve(setlist=1, track=1)
+
+        self.assertTrue(resolved.is_audio_only)
+
+    def test_mp4_is_classified_as_video(self):
+        _make_show(self.usb_root, "Concert April 24", {1: {"A": "Clip.mp4"}})
+        self._write_active_show("Concert April 24")
+
+        library = Library(self.usb_root)
+        resolved = library.resolve(setlist=1, track=1)
+
+        self.assertFalse(resolved.is_audio_only)
 
 
 if __name__ == "__main__":
