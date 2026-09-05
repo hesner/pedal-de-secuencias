@@ -27,7 +27,7 @@ class Core:
         self.player = player
         self.audio_player = audio_player
         self._current: Optional[Tuple[int, int]] = None
-        self.player.on_end_file = self._on_video_end_file
+        self.player.on_clip_finished = self._on_video_clip_finished
         self.audio_player.on_end_file = self._on_audio_end_file
 
     def start(self):
@@ -79,15 +79,15 @@ class Core:
         self.audio_player.silence()
         self._current = None
 
-    def _on_video_end_file(self, reason: str):
-        """Called from the video lane's listener thread when mpv reports
-        a file ended. Only auto-return to standby when a real clip
-        finished playing on its own (reason == 'eof') and we're not
-        already in standby -- never for a clip we ourselves just replaced
-        via a new loadfile (that produces a different reason)."""
-        if reason == "eof" and self._current is not None:
-            logger.info("Video clip finished on its own -- returning to standby.")
-            self._go_to_standby()
+    def _on_video_clip_finished(self):
+        """Called from the video lane's listener thread when a real clip
+        finishes playing on its own. By this point the Player has already
+        transitioned to standby itself (it queues standby right behind
+        every clip precisely so this doesn't require a fresh command from
+        here -- see Player.play()) -- so all that's left is clearing our
+        own "currently selected" bookkeeping."""
+        logger.info("Video clip finished on its own -- back to standby.")
+        self._current = None
 
     def _on_audio_end_file(self, reason: str):
         """Same idea for the audio-only lane: when a standalone MP3/WAV

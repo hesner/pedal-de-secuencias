@@ -24,18 +24,19 @@ it either calls `Player.play()` (video clip) or `AudioPlayer.play()`
 (audio-only), while making sure the *other* lane is in its idle state
 (video lane on standby, or audio lane silent).
 
-The video lane's audio track is explicitly disabled (aid=no) whenever
-it's showing standby (see Player.go_to_standby()) and re-enabled whenever
-it's playing a real clip (Player.play()) -- standby is meant to be a
-silent visual loop, so this is enforced rather than just assumed about
-how standby.mp4 happens to be authored. Disabling the track outright,
-not just muting it, also matters for a second reason found in practice:
-a muted-but-still-decoding audio stream still opens its own client on
-the shared ALSA `dmix` device (TESTING.md already flagged dmix as
-sensitive to more than one simultaneous producer), which caused audible
-crackling whenever an audio-only track played at the same time. With the
-track fully disabled during standby, dmix only ever has one real producer
-at a time.
+The video lane is explicitly muted whenever it's showing standby (see
+Player.go_to_standby()) and unmuted whenever it's playing a real clip
+(Player.play()) -- standby is meant to be a silent visual loop, so this
+is enforced rather than just assumed about how standby.mp4 happens to be
+authored. Muting (not disabling the audio track outright) is deliberate:
+an earlier version used aid=no/aid=auto instead, but toggling a track's
+enabled state forces mpv to tear down and rebuild its ALSA connection,
+which was audible as a click every time a video clip started or ended.
+Muting keeps the stream continuously open, so there's nothing to tear
+down. Both lanes are also forced to the same fixed output sample
+rate/layout (see _FIXED_AUDIO_SAMPLE_RATE below), which is what makes it
+safe for `dmix` to mix the muted video stream and the audio-only lane's
+real stream at the same time without glitching.
 
 Known limitation (documented, not fixed): if a track finishes playing on
 its own (natural end-of-file) at almost the exact same instant a new
@@ -94,7 +95,7 @@ class _MpvProcess:
             os.remove(self.socket_path)
 
         self._process = subprocess.Popen(
-            ["mpv", "--idle=yes", "--force-window=no",
+            ["mpv", "--idle=yes",
              f"--input-ipc-server={self.socket_path}", *self._extra_args],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -196,6 +197,12 @@ class Player:
         self._mpv = _MpvProcess(
             socket_path=socket_path,
             extra_args=[
+                # Keeps a video surface permanently mapped over the HDMI
+                # output, even in the brief gap between one file ending
+                # and the next being loaded. Without this, that gap
+                # briefly let the Linux console/login screen underneath
+                # show through on every clip transition.
+                "--force-window=yes",
                 "--hwdec=v4l2m2m-copy",
                 "--gpu-context=drm",
                 "--vo=gpu",
@@ -210,18 +217,17 @@ class Player:
         # from position 0 each time it's already showing -- see the note
         # on go_to_standby() below.
         self._on_standby = False
+        # Called (no arguments) when a real clip finishes playing on its
+        # own -- set by the Core. Note this is a *different* thing from
+        # the raw mpv "end-file" event: by the time this fires, standby is
+        # already playing (see _handle_end_file below), so the Core just
+        # needs to update its own bookkeeping, not ask for standby again.
+        self.on_clip_finished: Optional[Callable[[], None]] = None
+        self._mpv.on_end_file = self._handle_end_file
 
     @property
     def socket_path(self) -> str:
         return self._mpv.socket_path
-
-    @property
-    def on_end_file(self) -> Optional[Callable[[str], None]]:
-        return self._mpv.on_end_file
-
-    @on_end_file.setter
-    def on_end_file(self, callback: Optional[Callable[[str], None]]):
-        self._mpv.on_end_file = callback
 
     def start(self):
         """Launches mpv, connects to its IPC socket, and starts looping
@@ -236,10 +242,19 @@ class Player:
         """Loads and plays a real video clip. Always issues a fresh
         'loadfile replace', even if it's the same file already playing --
         that's what makes pressing the same footswitch twice restart the
-        song from the beginning (approved behavior)."""
+        song from the beginning (approved behavior).
+
+        Queues standby right behind the clip (loadfile ... append), so
+        that if the clip is left to play to its natural end, mpv advances
+        to standby on its own, immediately -- with no gap where mpv would
+        otherwise sit fully idle (no file loaded at all). That gap, even
+        though brief, was long enough for mpv's own idle screen ("Drop
+        files or URLs to play here") to flash on screen while waiting for
+        our end-file handler to react and send a fresh loadfile."""
         self._mpv.send({"command": ["loadfile", path, "replace"]})
         self._mpv.send({"command": ["set_property", "loop-file", "no"]})
-        self._mpv.send({"command": ["set_property", "aid", "auto"]})
+        self._mpv.send({"command": ["set_property", "mute", False]})
+        self._mpv.send({"command": ["loadfile", self.standby_path, "append"]})
         self._on_standby = False
 
     def go_to_standby(self):
@@ -257,22 +272,43 @@ class Player:
         video was visibly jumping back to its start on every single
         footswitch press.
 
-        The standby video's audio track is fully disabled (aid=no), not
-        just muted: standby is meant to be a silent visual loop, and a
-        muted-but-still-decoding audio stream was found to open a second
-        simultaneous ALSA client on the shared `dmix` device (TESTING.md
-        already flagged dmix as sensitive to more than one producer at
-        once) -- causing audible crackling whenever an audio-only track
-        played at the same time. Fully disabling the track means dmix
-        only ever has one real producer at a time: either a video clip's
-        own embedded audio, or the AudioPlayer lane's track -- never
-        both."""
+        The standby video is muted (mute=True), not audio-track-disabled:
+        an earlier version used aid=no/aid=auto to fully disable/re-enable
+        the audio track instead of muting it, reasoning that a
+        muted-but-still-decoding stream would open a second simultaneous
+        ALSA client on the shared `dmix` device (TESTING.md flags dmix as
+        sensitive to more than one producer). In practice that toggle
+        caused a different, worse click of its own: enabling/disabling a
+        track forces mpv to tear down and rebuild its ALSA connection,
+        audible every time a video clip started or ended. Muting instead
+        keeps the stream open continuously -- no teardown, no click -- and
+        dmix mixing two streams that share the exact same fixed format
+        (see _FIXED_AUDIO_SAMPLE_RATE above) is precisely what it's
+        designed to do, so this isn't expected to reintroduce the
+        original crackling."""
         if self._on_standby:
             return
         self._mpv.send({"command": ["loadfile", self.standby_path, "replace"]})
         self._mpv.send({"command": ["set_property", "loop-file", "inf"]})
-        self._mpv.send({"command": ["set_property", "aid", "no"]})
+        self._mpv.send({"command": ["set_property", "mute", True]})
         self._on_standby = True
+
+    def _handle_end_file(self, reason: str):
+        """Reacts to mpv's raw end-file event for this lane. A reason of
+        'eof' here can only mean the real clip queued by play() finished
+        on its own -- and because that same call already queued standby
+        right behind it, mpv has *already* started playing standby by the
+        time this fires. So there's no loadfile to send: just fix up the
+        properties that don't carry over from one playlist entry to the
+        next (looping, volume), update our own bookkeeping, and let the
+        Core know."""
+        if reason != "eof" or self._on_standby:
+            return
+        self._mpv.send({"command": ["set_property", "loop-file", "inf"]})
+        self._mpv.send({"command": ["set_property", "mute", True]})
+        self._on_standby = True
+        if self.on_clip_finished is not None:
+            self.on_clip_finished()
 
 
 class AudioPlayer:
@@ -290,6 +326,7 @@ class AudioPlayer:
         self._mpv = _MpvProcess(
             socket_path=socket_path,
             extra_args=[
+                "--force-window=no",  # no video output at all on this lane
                 "--vid=no",
                 f"--audio-device={audio_device}",
                 f"--audio-samplerate={_FIXED_AUDIO_SAMPLE_RATE}",
