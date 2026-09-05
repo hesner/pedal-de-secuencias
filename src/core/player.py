@@ -289,31 +289,55 @@ class Player:
         while not self._stop_standby_checker.is_set():
             resolved = self._probe_standby_path()
             with self._resolved_standby_lock:
+                changed = resolved != self._resolved_standby
                 self._resolved_standby = resolved
+            if changed and self._current_standby_path is not None:
+                # Already sitting on standby (real or fallback), not
+                # mid-clip -- reflect the change on screen right away
+                # instead of waiting for the next footswitch press to
+                # happen to notice. go_to_standby() re-reads the value
+                # just stored above and is a no-op if there's somehow
+                # nothing to change; never called here while a real clip
+                # is playing (_current_standby_path is None then), so
+                # this can't interrupt one.
+                self.go_to_standby()
             self._stop_standby_checker.wait(_STANDBY_CHECK_INTERVAL_S)
 
     def _probe_standby_path(self) -> str:
         """The real disk check. Only ever called from
-        _standby_checker_loop (or once, synchronously, from start()).
-
-        Uses os.statvfs() on standby_path's directory rather than reading
-        the file itself: an earlier version opened and read a byte from
-        standby_path directly, reasoning that would be more reliable than
-        a plain os.path.exists() (which can answer True for a moment
-        right after the USB is unplugged, from the kernel's dentry/inode
-        cache, without reaching the now-gone device) -- true, but this
-        Player itself is exactly what keeps standby_path's *content*
-        continuously hot in the page cache (mpv loops it forever), so a
-        content read kept succeeding from cache even with the USB
-        completely gone, confirmed happening in practice. statvfs asks
-        the filesystem driver for live space-usage stats instead of file
-        content, which isn't satisfied from that same per-file cache, so
-        it actually reaches (and fails against) a truly dead mount."""
-        try:
-            os.statvfs(os.path.dirname(self.standby_path))
+        _standby_checker_loop (or once, synchronously, from start())."""
+        if self._usb_device_is_present():
             return self.standby_path
+        return self.fallback_standby_path
+
+    def _usb_device_is_present(self) -> bool:
+        """Whether the block device actually backing standby_path's mount
+        point still physically exists.
+
+        Two earlier versions of this check -- reading a byte of
+        standby_path, then os.statvfs() on its directory -- both turned
+        out unreliable in practice: this ntfs-3g/FUSE mount keeps
+        answering both from its own cached state even with the USB
+        completely unplugged (confirmed live -- `lsblk` shows nothing,
+        yet a content read and even statvfs() on the mount point both
+        kept succeeding). What's actually authoritative is whether the
+        `/dev` device node the mount table says is backing this mount
+        point still exists: the kernel removes that node immediately on
+        physical disconnection, well before -- and independently of --
+        whatever the FUSE daemon on top of it has cached or still
+        believes."""
+        mount_point = os.path.dirname(self.standby_path)
+        device = None
+        try:
+            with open("/proc/mounts") as f:
+                for line in f:
+                    fields = line.split()
+                    if len(fields) >= 2 and fields[1] == mount_point:
+                        device = fields[0]
+                        break
         except OSError:
-            return self.fallback_standby_path
+            return False
+        return device is not None and os.path.exists(device)
 
     def play(self, path: str):
         """Loads and plays a real video clip. Always issues a fresh
