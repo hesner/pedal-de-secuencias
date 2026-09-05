@@ -64,7 +64,9 @@ Identified cause: `mpv` reports `Assuming 60.000000 FPS for display sync` while 
 - **Fix applied:** a 5V/2.5A charger. With this change, only a brief, non-recurring event was observed at boot (3 of 6 ports, once, ~89s), and **there was no freeze** during the following 18+ minutes of use, including a full sustained-load test (1080p decoding + dual audio stream).
 - **Open recommendation:** if the residual brief event is bothersome, also try a short, thick-gauge power USB cable — not confirmed as necessary, just a possible additional improvement.
 
-### Conclusion for test 4.0
+### Follow-up finding (2026-09-05, live Core development session)
+
+With the same 5V/2.5A charger already validated above, a second isolated undervoltage event was observed via `dmesg` (`hwmon1: Undervoltage detected!` ... `Voltage normalised` ~4s later) about 3h40m into a single, unusually heavy session: both `mpv` lanes (video + audio-only) running continuously, combined with frequent `main.py` restarts, an `ffmpeg` encode (MP3 conversion + fallback-standby generation), and repeated USB mount/unmount cycles, all overlapping at various points — a heavier and much more sustained combined load than a real show, which doesn't restart processes mid-performance. `vcgencmd get_throttled` immediately after showed no currently-active undervoltage (`0x50000` = historical bits only), and the system remained fully responsive throughout — no freeze, no dropped MIDI, no audio/video corruption observed. Not treated as a new hardware problem requiring a fix; noted here as evidence to watch for during an eventual full-length continuous show-duration test with the final, real content and hardware setup (not a dev/test session with this much process churn).
 
 The hardware (Raspberry Pi 2 Rev 1.1 + USB Behringer + M-VAVE + library USB, with a 5V/2.5A supply) sustains simultaneous audio+video playback without desync and without exhausting CPU/RAM — the section 2 critical requirement (audio and video of the same clip never out of sync) is validated.
 
