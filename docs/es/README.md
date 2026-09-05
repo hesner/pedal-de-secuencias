@@ -2,6 +2,9 @@
 
 *[Read in English](../../README.md)*
 
+[![Tests](https://github.com/hesner/pedal-de-secuencias/actions/workflows/tests.yml/badge.svg)](https://github.com/hesner/pedal-de-secuencias/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE)
+
 Un controlador de pedalera MIDI basado en Raspberry Pi para disparar
 audio y video en vivo sobre el escenario. Construido para la banda
 **NO FUTURO**, diseñado para funcionar con cualquier controlador MIDI
@@ -66,10 +69,14 @@ para el análisis empírico del controlador MIDI detrás del mapeo actual.
 
 ## Para empezar
 
-Requisitos: una Raspberry Pi (desarrollado contra una Pi 2, Raspberry Pi
-OS Lite), una interfaz de audio USB, un controlador MIDI de pedalera que
+Hardware: una Raspberry Pi (desarrollado contra una Pi 2, Raspberry Pi OS
+Lite), una interfaz de audio USB, un controlador MIDI de pedalera que
 pueda mandar Program Change estándar, y un USB para la biblioteca de
 canciones/videos.
+
+Software: `python3` (solo librería estándar — sin paquetes de Python de
+terceros, nada que instalar con `pip`), más `mpv`, `ffmpeg` y `ntfs-3g`
+en la propia Pi (`sudo apt install -y mpv ffmpeg ntfs-3g`).
 
 ```
 git clone https://github.com/hesner/pedal-de-secuencias
@@ -77,18 +84,23 @@ cd pedal-de-secuencias
 python3 -m unittest discover -s tests -v   # esta parte no necesita hardware
 ```
 
-Configurar el USB de biblioteca, generar el video de standby de respaldo
-local, e instalar el servicio de `systemd` para arranque automático están
-cubiertos en [`systemd/README.md`](../../systemd/README.md).
+La instalación completa paso a paso —USB de biblioteca, servicio de
+`systemd` para arranque automático, y sistema de archivos raíz de solo
+lectura— está en [`systemd/README.md`](../../systemd/README.md), desde
+los prerequisitos hasta un aparato completamente blindado.
 
 ## Estructura del proyecto
 
 ```
 src/
-├── adapter/    Traducción específica del controlador MIDI
-├── mapper/     MIDI estándar → acciones abstractas
-├── core/       Reproducción, biblioteca, standby
-└── main.py     Punto de entrada real del runtime
+├── adapter/            Traducción específica del controlador MIDI
+├── mapper/             MIDI estándar → acciones abstractas
+├── core/               Reproducción, biblioteca, standby
+├── main.py             Punto de entrada real del runtime
+├── live_test.py        Prueba manual de hardware: imprime qué haría el
+│                       Adapter/Mapper con cada mensaje MIDI, sin tocar la reproducción
+└── core_smoke_test.py  Prueba manual de hardware: ejercita Player/AudioPlayer
+                        directamente (video+audio, standby), sin la capa MIDI
 
 tests/          Tests unitarios (no requieren hardware)
 systemd/        Servicio de arranque automático, notas de udev/fstab
@@ -98,9 +110,11 @@ docs/es/        Traducciones al español de la documentación del proyecto
 
 ## Contribuir
 
-Issues y pull requests son bienvenidos. Si estás adaptando esto para un
-controlador MIDI distinto, la capa `Adapter` (`src/adapter/`) es donde va
-ese trabajo — el `Mapper` y el `Core` no deberían necesitar cambios.
+Issues y pull requests son bienvenidos — ver [`CONTRIBUTING.md`](CONTRIBUTING.md)
+para los lineamientos, y [`CHANGELOG.md`](CHANGELOG.md) para el historial
+de cambios. Si estás adaptando esto para un controlador MIDI distinto, la
+capa `Adapter` (`src/adapter/`) es donde va ese trabajo — el `Mapper` y
+el `Core` no deberían necesitar cambios.
 
 ## Apoya este proyecto
 

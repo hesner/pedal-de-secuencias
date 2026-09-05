@@ -2,6 +2,9 @@
 
 *[Leer en español](docs/es/README.md)*
 
+[![Tests](https://github.com/hesner/pedal-de-secuencias/actions/workflows/tests.yml/badge.svg)](https://github.com/hesner/pedal-de-secuencias/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A Raspberry Pi–based MIDI footswitch controller for triggering audio and
 video live on stage. Built for the band **NO FUTURO**, designed to work
 with any standard MIDI controller — not tied to one specific pedal brand.
@@ -61,9 +64,13 @@ controller analysis behind the current mapping.
 
 ## Getting started
 
-Requirements: a Raspberry Pi (developed against a Pi 2, Raspberry Pi OS
+Hardware: a Raspberry Pi (developed against a Pi 2, Raspberry Pi OS
 Lite), a USB audio interface, a MIDI foot controller that can send
 standard Program Change, and a USB drive for the song/video library.
+
+Software: `python3` (standard library only -- no third-party Python
+packages, nothing to `pip install`), plus `mpv`, `ffmpeg`, and `ntfs-3g`
+on the Pi itself (`sudo apt install -y mpv ffmpeg ntfs-3g`).
 
 ```
 git clone https://github.com/hesner/pedal-de-secuencias
@@ -71,18 +78,23 @@ cd pedal-de-secuencias
 python3 -m unittest discover -s tests -v   # no hardware needed for this part
 ```
 
-Setting up the library USB, generating the local fallback standby video,
-and installing the `systemd` service for automatic boot are all covered
-in [`systemd/README.md`](systemd/README.md).
+The full step-by-step install -- library USB, the `systemd` service for
+automatic boot, and the read-only root filesystem -- is in
+[`systemd/README.md`](systemd/README.md), starting from prerequisites
+through to a locked-down appliance.
 
 ## Project layout
 
 ```
 src/
-├── adapter/    MIDI controller–specific translation
-├── mapper/     Standard MIDI → abstract actions
-├── core/       Playback, library, standby
-└── main.py     Real runtime entry point
+├── adapter/            MIDI controller–specific translation
+├── mapper/             Standard MIDI → abstract actions
+├── core/               Playback, library, standby
+├── main.py             Real runtime entry point
+├── live_test.py        Manual hardware check: prints what the Adapter/Mapper
+│                       would do for each MIDI message, without touching playback
+└── core_smoke_test.py  Manual hardware check: exercises Player/AudioPlayer
+                        directly (video+audio, standby), without the MIDI layer
 
 tests/          Unit tests (no hardware required)
 systemd/        Auto-boot service, udev/fstab notes
@@ -92,9 +104,11 @@ docs/es/        Spanish translations of the project documentation
 
 ## Contributing
 
-Issues and pull requests are welcome. If you're adapting this for a
-different MIDI controller, the `Adapter` layer (`src/adapter/`) is where
-that work belongs — the `Mapper` and `Core` shouldn't need to change.
+Issues and pull requests are welcome -- see [`CONTRIBUTING.md`](CONTRIBUTING.md)
+for the guidelines, and [`CHANGELOG.md`](CHANGELOG.md) for release history.
+If you're adapting this for a different MIDI controller, the `Adapter`
+layer (`src/adapter/`) is where that work belongs — the `Mapper` and
+`Core` shouldn't need to change.
 
 ## Support this project
 

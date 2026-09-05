@@ -4,10 +4,32 @@ Makes the pedal start playing (standby loop, listening for the MIDI
 controller) automatically when the Raspberry Pi is powered on, with no
 screen or keyboard needed (section 1 of `MASTER_SPECIFICATION.md`).
 
-Three pieces, applied in this order: an `/etc/fstab` entry so the library
-USB mounts on its own, a `systemd` service that runs `src/main.py`, and
-(as the final, deliberately-last step) a read-only overlay on the Pi's
-own root filesystem.
+Four pieces, applied in this order: the software this project depends
+on, an `/etc/fstab` entry so the library USB mounts on its own, a
+`systemd` service that runs `src/main.py`, and (as the final,
+deliberately-last step) a read-only overlay on the Pi's own root
+filesystem.
+
+## 0. Software prerequisites
+
+Raspberry Pi OS (this project was developed against Lite) already ships
+`python3`; install the rest:
+
+```
+sudo apt update
+sudo apt install -y mpv ffmpeg ntfs-3g
+```
+
+- `mpv` -- drives all playback (`src/core/player.py`, over its JSON IPC
+  socket; no `python-mpv` or other third-party Python package needed).
+- `ffmpeg` -- only used by `scripts/generate_fallback_standby.sh`, to
+  generate the local fallback standby video once.
+- `ntfs-3g` -- only needed if your library USB is formatted NTFS, as in
+  this project's own reference setup; use whatever driver matches your
+  own USB drive's filesystem instead (e.g. `exfat-fuse` for exFAT).
+
+No `requirements.txt`: the Python side of this project (`src/`) is
+standard-library only, deliberately, so there's nothing to `pip install`.
 
 ## 1. Library USB — `/etc/fstab`
 
@@ -51,12 +73,13 @@ sudo systemctl status pedal-core
 journalctl -u pedal-core -f
 ```
 
-The unit as committed here hardcodes this project's current dev checkout
-path (`/home/hesner/pedal_src_test`), user (`hesner`), and this specific
-USB's UUID (`--usb-uuid=07C1339846657D95`) -- edit `ExecStart`/`User` in
-`pedal-core.service` if any of those ever change (e.g. once this
-graduates from a dev checkout to a proper `git clone`d deployment path,
-or the library USB drive itself is ever replaced with a different one).
+The unit as committed here uses placeholders -- `<YOUR_USER>` and
+`<YOUR_USB_UUID>` -- in `User=` and `ExecStart=`. Replace both with your
+own values before copying it in (this project's own reference deployment
+uses `User=hesner`, checkout path `/home/hesner/pedal-de-secuencias`, and
+UUID `07C1339846657D95`, matching the `/etc/fstab` entry from section 1).
+Edit them again later if the checkout path, user, or library USB drive
+ever changes.
 
 `Restart=always` means the service keeps retrying every 5s if it exits
 for any reason (M-VAVE not enumerated yet, USB not mounted yet, ...) --
