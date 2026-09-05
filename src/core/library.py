@@ -64,9 +64,16 @@ class ResolvedTrack:
     is_audio_only: bool
 
 
-def _track_file_pattern(letter: str) -> re.Pattern:
-    extensions = "|".join(_ALL_EXTENSIONS)
-    return re.compile(rf"^{letter} - .+\.({extensions})$", re.IGNORECASE)
+# Precompiled once at import time, for each of the 3 possible track
+# letters -- resolve() runs on every footswitch press, and recompiling a
+# fresh regex from a formatted string on every single call was repeated
+# work for no reason (there are only ever 3 patterns, know in advance).
+_TRACK_FILE_PATTERNS = {
+    letter: re.compile(
+        rf"^{letter} - .+\.({'|'.join(_ALL_EXTENSIONS)})$", re.IGNORECASE
+    )
+    for letter in _TRACK_LETTERS.values()
+}
 
 
 class Library:
@@ -149,7 +156,7 @@ class Library:
         return None
 
     def _find_track_file(self, set_folder: str, letter: str) -> Optional[str]:
-        pattern = _track_file_pattern(letter)
+        pattern = _TRACK_FILE_PATTERNS[letter]
         try:
             entries = sorted(os.listdir(set_folder))
         except OSError:

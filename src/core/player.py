@@ -86,6 +86,19 @@ class _MpvProcess:
     connection for sending commands, a second dedicated one for reading
     events), and exposes send()/close(). Not part of this module's public
     API -- Player and AudioPlayer are.
+
+    Both connections get their own background reader thread. The command
+    connection's replies (a JSON line per command sent, e.g.
+    {"error": "success", ...}) are never inspected for their result --
+    this class's callers don't currently need that -- but they still have
+    to be read off the socket and discarded, or they simply pile up
+    unread in the kernel's receive buffer for as long as this process
+    keeps running. That never caused an observed problem in any single
+    development session, but this is meant to run on an appliance that
+    stays powered on indefinitely, not just for the length of one show,
+    so it's drained properly rather than leaning on the buffer being
+    "probably big enough" forever. A failed command is still logged, even
+    though it isn't correlated back to which specific call sent it.
     """
 
     def __init__(self, socket_path: str, extra_args: List[str]):
@@ -94,7 +107,7 @@ class _MpvProcess:
         self._process: Optional[subprocess.Popen] = None
         self._command_sock: Optional[socket.socket] = None
         self._send_lock = threading.Lock()
-        self._listener_thread: Optional[threading.Thread] = None
+        self._reader_threads: List[threading.Thread] = []
         self._stop_listener = threading.Event()
         self.on_end_file: Optional[Callable[[str], None]] = None
 
@@ -110,7 +123,10 @@ class _MpvProcess:
         )
 
         self._command_sock = self._connect()
-        self._start_listener()
+        self._spawn_reader(self._command_sock, self._handle_command_reply_line)
+
+        event_sock = self._connect()
+        self._spawn_reader(event_sock, self._handle_event_line)
 
     def stop(self):
         self._stop_listener.set()
@@ -154,19 +170,20 @@ class _MpvProcess:
             f"after {_CONNECT_TIMEOUT_S}s: {last_error}"
         )
 
-    def _start_listener(self):
-        try:
-            event_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            event_sock.connect(self.socket_path)
-        except OSError as e:
-            logger.error("Could not open a second IPC connection for events: %s", e)
-            return
+    def _spawn_reader(self, sock: socket.socket, line_handler: Callable[[bytes], None]):
+        """One background thread per connection, for as long as this
+        process runs: reads newline-delimited JSON messages and hands
+        each line to line_handler. Every open connection to mpv's IPC
+        socket needs one of these -- an unread connection's incoming
+        messages (replies to commands sent on it, plus every broadcast
+        event) simply accumulate forever in the kernel's receive buffer
+        otherwise."""
 
-        def _listen():
+        def _read_loop():
             buffer = b""
             while not self._stop_listener.is_set():
                 try:
-                    chunk = event_sock.recv(4096)
+                    chunk = sock.recv(4096)
                 except OSError:
                     break
                 if not chunk:
@@ -174,11 +191,27 @@ class _MpvProcess:
                 buffer += chunk
                 while b"\n" in buffer:
                     line, buffer = buffer.split(b"\n", 1)
-                    self._handle_event_line(line)
-            event_sock.close()
+                    line_handler(line)
+            sock.close()
 
-        self._listener_thread = threading.Thread(target=_listen, daemon=True)
-        self._listener_thread.start()
+        thread = threading.Thread(target=_read_loop, daemon=True)
+        thread.start()
+        self._reader_threads.append(thread)
+
+    def _handle_command_reply_line(self, line: bytes):
+        """Reply to a command sent on the command connection -- discarded
+        (no caller currently needs the result of a specific command), but
+        a failure is still worth a log line even without knowing which
+        call triggered it."""
+        if not line.strip():
+            return
+        try:
+            message = json.loads(line)
+        except json.JSONDecodeError:
+            return
+        error = message.get("error")
+        if error is not None and error != "success":
+            logger.warning("mpv command failed: %s", message)
 
     def _handle_event_line(self, line: bytes):
         if not line.strip():
@@ -205,20 +238,17 @@ class Player:
         # standby_path normally lives on the library USB; fallback_standby_path
         # lives locally on the Pi's own storage (see
         # scripts/generate_fallback_standby.sh) and is used automatically
-        # whenever standby_path isn't actually readable right now -- USB
+        # whenever standby_path isn't actually reachable right now -- USB
         # not inserted at boot, or removed while running.
         #
-        # The actual disk check (open + read a byte, not just
-        # os.path.exists() -- confirmed by testing that exists() can
-        # still answer True from the kernel's dentry cache for a moment
-        # right after the USB is physically unplugged) runs only in a
-        # background thread, at most once every _STANDBY_CHECK_INTERVAL_S
-        # -- never from go_to_standby()/play() themselves. Every
-        # footswitch press, including STOP, reads an in-memory value that
-        # the checker last found and does zero disk I/O of its own: this
-        # is a live-performance-facing hot path, and STOP in particular
-        # must stay instant regardless of what the USB happens to be
-        # doing.
+        # The actual check (see _usb_device_is_present() for exactly what
+        # it does and why) runs only in a background thread, at most once
+        # every _STANDBY_CHECK_INTERVAL_S -- never from
+        # go_to_standby()/play() themselves. Every footswitch press,
+        # including STOP, reads an in-memory value that the checker last
+        # found and does zero disk I/O of its own: this is a
+        # live-performance-facing hot path, and STOP in particular must
+        # stay instant regardless of what the USB happens to be doing.
         self.standby_path = standby_path
         self.fallback_standby_path = fallback_standby_path
         self._resolved_standby_lock = threading.Lock()
