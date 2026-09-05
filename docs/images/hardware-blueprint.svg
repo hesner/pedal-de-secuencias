@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 950" font-family="'Consolas','Courier New',monospace">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 980" font-family="'Consolas','Courier New',monospace">
   <defs>
     <pattern id="grid-minor" width="20" height="20" patternUnits="userSpaceOnUse">
       <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#2a5a92" stroke-width="0.5"/>
@@ -12,136 +12,160 @@
     </marker>
   </defs>
 
-  <!-- background -->
-  <rect x="0" y="0" width="1400" height="950" fill="#0b2a4a"/>
-  <rect x="0" y="0" width="1400" height="950" fill="url(#grid-major)"/>
+  <rect x="0" y="0" width="1400" height="980" fill="#0b2a4a"/>
+  <rect x="0" y="0" width="1400" height="980" fill="url(#grid-major)"/>
+  <rect x="20" y="20" width="1360" height="940" fill="none" stroke="#cfe8ff" stroke-width="2"/>
+  <rect x="30" y="30" width="1340" height="920" fill="none" stroke="#cfe8ff" stroke-width="0.75"/>
 
-  <!-- sheet border -->
-  <rect x="20" y="20" width="1360" height="910" fill="none" stroke="#cfe8ff" stroke-width="2"/>
-  <rect x="30" y="30" width="1340" height="890" fill="none" stroke="#cfe8ff" stroke-width="0.75"/>
-
-  <!-- corner crosshairs -->
   <g stroke="#cfe8ff" stroke-width="1.5">
     <line x1="10" y1="35" x2="30" y2="35"/><line x1="20" y1="25" x2="20" y2="45"/>
     <line x1="1370" y1="35" x2="1390" y2="35"/><line x1="1380" y1="25" x2="1380" y2="45"/>
-    <line x1="10" y1="915" x2="30" y2="915"/><line x1="20" y1="905" x2="20" y2="925"/>
-    <line x1="1370" y1="915" x2="1390" y2="915"/><line x1="1380" y1="905" x2="1380" y2="925"/>
+    <line x1="10" y1="945" x2="30" y2="945"/><line x1="20" y1="935" x2="20" y2="955"/>
+    <line x1="1370" y1="945" x2="1390" y2="945"/><line x1="1380" y1="935" x2="1380" y2="955"/>
   </g>
 
-  <!-- title -->
   <text x="60" y="70" fill="#cfe8ff" font-size="26" letter-spacing="3">SEQUENCE PEDAL — HARDWARE SIGNAL FLOW</text>
-  <text x="60" y="94" fill="#7fb3e0" font-size="14" letter-spacing="2">PEDAL DE SECUENCIAS · SCHEMATIC · NOT TO SCALE</text>
-
-  <!-- ============ MIDI CONTROLLER: M-VAVE PD41 ============ -->
-  <g stroke="#cfe8ff" stroke-width="2" fill="none">
-    <rect x="70" y="330" width="230" height="170" rx="6"/>
-    <rect x="95" y="352" width="180" height="40" rx="3"/>
-    <text x="185" y="378" fill="#cfe8ff" font-size="16" text-anchor="middle" stroke="none">1A</text>
-    <!-- 4 footswitch buttons A B C D -->
-    <circle cx="115" cy="440" r="24"/>
-    <circle cx="167" cy="440" r="24"/>
-    <circle cx="219" cy="440" r="24"/>
-    <circle cx="271" cy="440" r="24"/>
-    <!-- USB port nub -->
-    <rect x="290" y="405" width="14" height="10"/>
-  </g>
-  <text x="115" y="446" fill="#cfe8ff" font-size="15" text-anchor="middle" stroke="none">A</text>
-  <text x="167" y="446" fill="#cfe8ff" font-size="15" text-anchor="middle" stroke="none">B</text>
-  <text x="219" y="446" fill="#cfe8ff" font-size="15" text-anchor="middle" stroke="none">C</text>
-  <text x="271" y="446" fill="#cfe8ff" font-size="15" text-anchor="middle" stroke="none">D</text>
-  <text x="185" y="522" fill="#cfe8ff" font-size="15" text-anchor="middle" letter-spacing="1">M-VAVE PD41</text>
-  <text x="185" y="540" fill="#7fb3e0" font-size="12" text-anchor="middle">USB MIDI FOOT CONTROLLER</text>
+  <text x="60" y="94" fill="#7fb3e0" font-size="14" letter-spacing="2">PEDAL DE SECUENCIAS · SCHEMATIC, TRACED FROM REFERENCE PHOTOS · NOT TO SCALE</text>
 
   <!-- ============ RASPBERRY PI 2 MODEL B ============ -->
   <g stroke="#cfe8ff" stroke-width="2" fill="none">
-    <rect x="470" y="300" width="340" height="230" rx="6"/>
-    <!-- GPIO header -->
-    <g>
-      <rect x="500" y="300" width="130" height="16"/>
-      <line x1="505" y1="300" x2="505" y2="316" stroke-width="1"/>
-      <line x1="512" y1="300" x2="512" y2="316" stroke-width="1"/>
-      <line x1="519" y1="300" x2="519" y2="316" stroke-width="1"/>
-      <line x1="526" y1="300" x2="526" y2="316" stroke-width="1"/>
-      <line x1="533" y1="300" x2="533" y2="316" stroke-width="1"/>
-      <line x1="540" y1="300" x2="540" y2="316" stroke-width="1"/>
-      <line x1="547" y1="300" x2="547" y2="316" stroke-width="1"/>
-      <line x1="554" y1="300" x2="554" y2="316" stroke-width="1"/>
-      <line x1="561" y1="300" x2="561" y2="316" stroke-width="1"/>
-      <line x1="568" y1="300" x2="568" y2="316" stroke-width="1"/>
+    <rect x="560" y="140" width="280" height="190" rx="4"/>
+    <!-- GPIO header, top-left -->
+    <rect x="585" y="140" width="110" height="14"/>
+    <g stroke-width="1">
+      <line x1="590" y1="140" x2="590" y2="154"/><line x1="596" y1="140" x2="596" y2="154"/>
+      <line x1="602" y1="140" x2="602" y2="154"/><line x1="608" y1="140" x2="608" y2="154"/>
+      <line x1="614" y1="140" x2="614" y2="154"/><line x1="620" y1="140" x2="620" y2="154"/>
+      <line x1="626" y1="140" x2="626" y2="154"/><line x1="632" y1="140" x2="632" y2="154"/>
+      <line x1="638" y1="140" x2="638" y2="154"/><line x1="644" y1="140" x2="644" y2="154"/>
+      <line x1="650" y1="140" x2="650" y2="154"/><line x1="656" y1="140" x2="656" y2="154"/>
+      <line x1="662" y1="140" x2="662" y2="154"/><line x1="668" y1="140" x2="668" y2="154"/>
+      <line x1="674" y1="140" x2="674" y2="154"/><line x1="680" y1="140" x2="680" y2="154"/>
     </g>
-    <!-- micro-SD slot, left edge -->
-    <rect x="460" y="400" width="10" height="30"/>
-    <!-- USB ports, right edge -->
-    <rect x="810" y="335" width="26" height="34"/>
-    <rect x="810" y="380" width="26" height="34"/>
-    <rect x="810" y="425" width="26" height="34"/>
-    <!-- HDMI + power, bottom edge -->
-    <rect x="520" y="530" width="34" height="14"/>
-    <rect x="580" y="530" width="18" height="14"/>
-    <!-- ethernet, right-bottom -->
-    <rect x="810" y="470" width="30" height="22"/>
+    <!-- SoC + raspberry mark -->
+    <rect x="665" y="205" width="72" height="72"/>
+    <circle cx="615" cy="220" r="7"/>
+    <circle cx="605" cy="235" r="7"/>
+    <circle cx="625" cy="235" r="7"/>
+    <!-- USB x2, right edge -->
+    <rect x="828" y="175" width="30" height="34"/>
+    <rect x="828" y="218" width="30" height="34"/>
+    <!-- ethernet, right edge below USB -->
+    <rect x="826" y="262" width="34" height="30"/>
+    <!-- HDMI, micro-USB power, AV jack: bottom edge -->
+    <rect x="590" y="326" width="46" height="14"/>
+    <circle cx="672" cy="333" r="8"/>
+    <rect x="700" y="326" width="20" height="12"/>
+    <!-- mounting holes -->
+    <circle cx="578" cy="155" r="5"/><circle cx="822" cy="155" r="5"/>
+    <circle cx="578" cy="315" r="5"/><circle cx="822" cy="315" r="5"/>
   </g>
-  <text x="640" y="360" fill="#cfe8ff" font-size="15" text-anchor="middle" stroke="none">CPU</text>
-  <text x="640" y="270" fill="#cfe8ff" font-size="16" text-anchor="middle" letter-spacing="1">RASPBERRY PI 2 MODEL B</text>
-  <text x="640" y="290" fill="#7fb3e0" font-size="12" text-anchor="middle">CORE · ADAPTER · MAPPER RUNTIME</text>
-  <text x="850" y="357" fill="#7fb3e0" font-size="11">USB ×3</text>
-  <text x="537" y="558" fill="#7fb3e0" font-size="11" text-anchor="middle">HDMI</text>
-  <text x="825" y="497" fill="#7fb3e0" font-size="11" text-anchor="middle">ETH</text>
-
-  <!-- ============ BEHRINGER USB AUDIO INTERFACE ============ -->
-  <g stroke="#cfe8ff" stroke-width="2" fill="none">
-    <rect x="1000" y="120" width="260" height="130" rx="6"/>
-    <circle cx="1045" cy="185" r="20"/>
-    <circle cx="1105" cy="185" r="20"/>
-    <rect x="1150" y="165" width="90" height="16"/>
-    <rect x="1150" y="195" width="90" height="16"/>
-  </g>
-  <text x="1130" y="270" fill="#cfe8ff" font-size="15" text-anchor="middle" letter-spacing="1">BEHRINGER USB AUDIO I/F</text>
-  <text x="1130" y="288" fill="#7fb3e0" font-size="12" text-anchor="middle">BALANCED OUT → PA / MIXER</text>
+  <text x="619" y="150" fill="#cfe8ff" font-size="9" stroke="none">GPIO</text>
+  <text x="701" y="245" fill="#cfe8ff" font-size="10" text-anchor="middle" stroke="none">BCM2836</text>
+  <text x="672" y="356" fill="#7fb3e0" font-size="10" text-anchor="middle" stroke="none">HDMI</text>
+  <text x="710" y="352" fill="#7fb3e0" font-size="9" text-anchor="middle" stroke="none">PWR</text>
+  <text x="700" y="122" fill="#cfe8ff" font-size="16" text-anchor="middle" letter-spacing="1">RASPBERRY PI 2 MODEL B</text>
+  <text x="872" y="197" fill="#7fb3e0" font-size="10">USB ×2</text>
+  <text x="872" y="281" fill="#7fb3e0" font-size="10">ETH</text>
 
   <!-- ============ HDMI DISPLAY / TV ============ -->
   <g stroke="#cfe8ff" stroke-width="2" fill="none">
-    <rect x="1010" y="360" width="240" height="150" rx="4"/>
-    <rect x="1075" y="510" width="110" height="10"/>
-    <line x1="1130" y1="510" x2="1130" y2="530"/>
-    <line x1="1080" y1="530" x2="1180" y2="530"/>
+    <rect x="1010" y="140" width="250" height="150" rx="4"/>
+    <rect x="1075" y="290" width="110" height="10"/>
+    <line x1="1130" y1="300" x2="1130" y2="318"/>
+    <line x1="1082" y1="318" x2="1178" y2="318"/>
   </g>
-  <text x="1130" y="440" fill="#cfe8ff" font-size="14" text-anchor="middle" stroke="none">▶</text>
-  <text x="1130" y="560" fill="#cfe8ff" font-size="15" text-anchor="middle" letter-spacing="1">HDMI DISPLAY / TV</text>
-  <text x="1130" y="578" fill="#7fb3e0" font-size="12" text-anchor="middle">VIDEO OUT (mpv --gpu-context=drm)</text>
+  <polygon points="1108,195 1108,235 1148,215" fill="#cfe8ff" stroke="none"/>
+  <text x="1135" y="345" fill="#cfe8ff" font-size="15" text-anchor="middle" letter-spacing="1">HDMI DISPLAY / TV</text>
+  <text x="1135" y="363" fill="#7fb3e0" font-size="11" text-anchor="middle">mpv --gpu-context=drm</text>
+
+  <!-- ============ USB HUB (6-port) ============ -->
+  <g stroke="#cfe8ff" stroke-width="2" fill="none">
+    <rect x="610" y="440" width="180" height="64" rx="4"/>
+    <rect x="628" y="480" width="20" height="12"/>
+    <rect x="663" y="480" width="20" height="12"/>
+    <rect x="698" y="480" width="20" height="12"/>
+    <rect x="733" y="480" width="20" height="12"/>
+    <rect x="768" y="480" width="20" height="12"/>
+  </g>
+  <text x="700" y="465" fill="#cfe8ff" font-size="13" text-anchor="middle" stroke="none">USB HUB</text>
+  <text x="700" y="524" fill="#7fb3e0" font-size="11" text-anchor="middle">6-PORT, POWERED (see TESTING.md)</text>
+
+  <!-- ============ M-VAVE CHOCOLATE / PD41 ============ -->
+  <g stroke="#cfe8ff" stroke-width="2" fill="none">
+    <rect x="70" y="600" width="270" height="100" rx="14"/>
+    <rect x="92" y="616" width="68" height="26" rx="3"/>
+    <circle cx="196" cy="662" r="26"/>
+    <circle cx="240" cy="662" r="26"/>
+    <circle cx="284" cy="662" r="26"/>
+    <circle cx="152" cy="662" r="26"/>
+    <rect x="336" y="642" width="12" height="16"/>
+  </g>
+  <text x="126" y="633" fill="#cfe8ff" font-size="14" text-anchor="middle" stroke="none">1A</text>
+  <text x="152" y="668" fill="#cfe8ff" font-size="12" text-anchor="middle" stroke="none">A</text>
+  <text x="196" y="668" fill="#cfe8ff" font-size="12" text-anchor="middle" stroke="none">B</text>
+  <text x="240" y="668" fill="#cfe8ff" font-size="12" text-anchor="middle" stroke="none">C</text>
+  <text x="284" y="668" fill="#cfe8ff" font-size="12" text-anchor="middle" stroke="none">D</text>
+  <text x="205" y="730" fill="#cfe8ff" font-size="15" text-anchor="middle" letter-spacing="1">M-VAVE CHOCOLATE (PD41)</text>
+  <text x="205" y="748" fill="#7fb3e0" font-size="11" text-anchor="middle">USB/BLE WIRELESS MIDI FOOT CONTROLLER</text>
 
   <!-- ============ LIBRARY USB DRIVE ============ -->
   <g stroke="#cfe8ff" stroke-width="2" fill="none">
-    <rect x="560" y="650" width="80" height="34" rx="3"/>
-    <rect x="586" y="628" width="28" height="22"/>
+    <rect x="660" y="600" width="80" height="34" rx="3"/>
+    <rect x="686" y="578" width="28" height="22"/>
   </g>
-  <text x="600" y="710" fill="#cfe8ff" font-size="15" text-anchor="middle" letter-spacing="1">LIBRARY USB DRIVE</text>
-  <text x="600" y="728" fill="#7fb3e0" font-size="12" text-anchor="middle">NTFS · SETLIST FOLDERS · READ-ONLY MOUNT</text>
+  <text x="700" y="660" fill="#cfe8ff" font-size="15" text-anchor="middle" letter-spacing="1">LIBRARY USB DRIVE</text>
+  <text x="700" y="678" fill="#7fb3e0" font-size="11" text-anchor="middle">NTFS · SETLIST FOLDERS · READ-ONLY MOUNT</text>
+
+  <!-- ============ BEHRINGER U-PHORIA UM2 ============ -->
+  <g stroke="#cfe8ff" stroke-width="2" fill="none">
+    <path d="M1000,650 L1000,760 L1280,760 L1280,610 L1080,590 Z"/>
+    <!-- 3 knobs on the angled top face -->
+    <circle cx="1055" cy="625" r="17"/>
+    <circle cx="1110" cy="618" r="17"/>
+    <circle cx="1165" cy="613" r="15"/>
+    <line x1="1055" y1="625" x2="1055" y2="611"/>
+    <line x1="1110" y1="618" x2="1110" y2="604"/>
+    <line x1="1165" y1="613" x2="1170" y2="600"/>
+    <!-- front face: combo XLR, inst jack, LEDs, headphone -->
+    <circle cx="1045" cy="710" r="24"/>
+    <circle cx="1120" cy="720" r="14"/>
+    <circle cx="1245" cy="700" r="15"/>
+    <circle cx="1170" cy="695" r="4"/><circle cx="1170" cy="708" r="4"/>
+    <circle cx="1195" cy="698" r="4"/><circle cx="1195" cy="711" r="4"/>
+    <rect x="1215" y="655" width="10" height="14"/>
+  </g>
+  <text x="1140" y="600" fill="#cfe8ff" font-size="10" text-anchor="middle" stroke="none">behringer</text>
+  <text x="1120" y="745" fill="#cfe8ff" font-size="11" text-anchor="middle" stroke="none">U-PHORIA UM2</text>
+  <text x="1140" y="805" fill="#cfe8ff" font-size="15" text-anchor="middle" letter-spacing="1">BEHRINGER U-PHORIA UM2</text>
+  <text x="1140" y="823" fill="#7fb3e0" font-size="11" text-anchor="middle">USB AUDIO I/F · BALANCED OUT → PA / MIXER</text>
 
   <!-- ============ CONNECTIONS ============ -->
   <g stroke="#cfe8ff" stroke-width="1.75" stroke-dasharray="6 5" fill="none" marker-end="url(#arrow)">
-    <path d="M304,415 H466"/>
-    <path d="M814,375 C900,320 950,270 996,222"/>
-    <path d="M814,455 C880,470 940,470 1006,450"/>
-    <path d="M600,626 V534"/>
+    <path d="M843,253 C820,320 790,390 772,436"/>
+    <path d="M672,341 C740,420 920,380 1006,222"/>
+    <path d="M340,655 C480,590 555,525 613,489"/>
+    <path d="M700,578 V508"/>
+    <path d="M787,489 C850,540 935,585 998,655"/>
   </g>
-  <text x="385" y="405" fill="#cfe8ff" font-size="12" text-anchor="middle">USB MIDI</text>
-  <text x="905" y="278" fill="#cfe8ff" font-size="12" text-anchor="middle">USB AUDIO</text>
-  <text x="905" y="490" fill="#cfe8ff" font-size="12" text-anchor="middle">HDMI (DRM)</text>
-  <text x="640" y="600" fill="#cfe8ff" font-size="12" text-anchor="middle">USB (ro mount)</text>
+  <text x="797" y="425" fill="#cfe8ff" font-size="12">USB</text>
+  <text x="960" y="205" fill="#cfe8ff" font-size="12">HDMI</text>
+  <text x="440" y="565" fill="#cfe8ff" font-size="12" text-anchor="middle">USB MIDI</text>
+  <text x="722" y="545" fill="#cfe8ff" font-size="12">USB (ro)</text>
+  <text x="920" y="555" fill="#cfe8ff" font-size="12" text-anchor="middle">USB AUDIO</text>
 
   <!-- ============ TITLE BLOCK ============ -->
   <g stroke="#cfe8ff" stroke-width="1" fill="none">
-    <rect x="900" y="800" width="460" height="100"/>
-    <line x1="900" y1="825" x2="1360" y2="825"/>
-    <line x1="900" y1="850" x2="1360" y2="850"/>
-    <line x1="900" y1="875" x2="1360" y2="875"/>
-    <line x1="1140" y1="825" x2="1140" y2="900"/>
+    <rect x="70" y="850" width="460" height="100"/>
+    <line x1="70" y1="875" x2="530" y2="875"/>
+    <line x1="70" y1="900" x2="530" y2="900"/>
+    <line x1="70" y1="925" x2="530" y2="925"/>
+    <line x1="310" y1="875" x2="310" y2="950"/>
   </g>
-  <text x="912" y="818" fill="#cfe8ff" font-size="13" letter-spacing="1">PROJECT: SEQUENCE PEDAL / PEDAL DE SECUENCIAS</text>
-  <text x="912" y="843" fill="#7fb3e0" font-size="12">DWG: hardware-signal-flow.svg</text>
-  <text x="1150" y="843" fill="#7fb3e0" font-size="12">REV: 1.0</text>
-  <text x="912" y="868" fill="#7fb3e0" font-size="12">LICENSE: MIT</text>
-  <text x="1150" y="868" fill="#7fb3e0" font-size="12">DATE: 2026-09-05</text>
-  <text x="912" y="893" fill="#7fb3e0" font-size="12">github.com/hesner/pedal-de-secuencias</text>
+  <text x="82" y="868" fill="#cfe8ff" font-size="13" letter-spacing="1">PROJECT: SEQUENCE PEDAL / PEDAL DE SECUENCIAS</text>
+  <text x="82" y="893" fill="#7fb3e0" font-size="12">DWG: hardware-blueprint.svg</text>
+  <text x="320" y="893" fill="#7fb3e0" font-size="12">REV: 2.0</text>
+  <text x="82" y="918" fill="#7fb3e0" font-size="12">LICENSE: MIT</text>
+  <text x="320" y="918" fill="#7fb3e0" font-size="12">DATE: 2026-09-05</text>
+  <text x="82" y="943" fill="#7fb3e0" font-size="12">github.com/hesner/pedal-de-secuencias</text>
 </svg>
