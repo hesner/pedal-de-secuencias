@@ -1,0 +1,21 @@
+# Configuración/memoria local de Claude Code -- no debe publicarse
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Archivos de prueba generados durante las pruebas de hardware (grandes,
+# no son parte del código fuente del proyecto)
+*.mp4
+*.mp3
+*.wav
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Material propietario del fabricante (no es nuestro para redistribuir en
+# un repo open source) -- el análisis relevante ya vive en MAVAVE_ANALYSIS.md
+PD41-Software-Instructions.pdf
