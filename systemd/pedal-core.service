@@ -1,0 +1,27 @@
+[Unit]
+Description=Pedal de Secuencias -- Core (MIDI-driven audio/video playback)
+# Ordering only, on purpose -- NOT RequiresMountsFor. That directive
+# creates a hard dependency: if the USB is ever unplugged while running,
+# systemd stops this whole service (an intentional stop, so Restart=
+# below doesn't even kick in) instead of letting Player fall back to the
+# local standby video the way it's designed to. Wants+After just means
+# "try to have the mount ready before starting, but don't tear this
+# service down if it later goes away" -- found the hard way, by
+# unplugging the USB during a live test and getting neither the real nor
+# the fallback standby, because nothing was running at all.
+Wants=media-usb.mount
+After=media-usb.mount sound.target network.target
+
+[Service]
+Type=simple
+User=hesner
+ExecStart=/usr/bin/python3 /home/hesner/pedal_src_test/src/main.py --usb-root /media/usb --standby /media/usb/standby.mp4 --fallback-standby /home/hesner/pedal-assets/fallback-standby.mp4 --log-file /home/hesner/pedal-core.log
+# Appliance behavior (section 1 of MASTER_SPECIFICATION.md): no one is
+# available to restart this by hand if it exits -- e.g. the M-VAVE not
+# being enumerated yet at the exact moment this starts. Keep retrying
+# indefinitely rather than giving up.
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
