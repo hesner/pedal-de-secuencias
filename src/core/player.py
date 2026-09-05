@@ -71,14 +71,6 @@ _CONNECT_RETRY_INTERVAL_S = 0.1
 # rate before handing audio to ALSA, so dmix's format never changes.
 _FIXED_AUDIO_SAMPLE_RATE = 48000
 
-# How often the background thread re-checks whether the real standby
-# (library USB) is reachable -- see Player._standby_checker_loop. Kept
-# out of the request path entirely (see Player.__init__), so this is
-# purely "how long, worst case, until a USB unplug/replug is noticed" --
-# a couple of seconds is an easy trade against literally any added
-# latency on a live footswitch press.
-_STANDBY_CHECK_INTERVAL_S = 2.0
-
 
 class _MpvProcess:
     """Low-level plumbing shared by both playback lanes: spawns one mpv
@@ -248,6 +240,7 @@ class Player:
         self,
         standby_path: str,
         fallback_standby_path: str,
+        usb_uuid: str,
         socket_path: str = "/tmp/pedal-mpv-video.sock",
         audio_device: str = "alsa/mixcodec",
         drm_mode: str = "preferred",
@@ -255,23 +248,26 @@ class Player:
         # standby_path normally lives on the library USB; fallback_standby_path
         # lives locally on the Pi's own storage (see
         # scripts/generate_fallback_standby.sh) and is used automatically
-        # whenever standby_path isn't actually reachable right now -- USB
-        # not inserted at boot, or removed while running.
+        # whenever standby_path isn't reachable at startup -- library USB
+        # not inserted when the Pi is powered on.
         #
-        # The actual check (see _usb_device_is_present() for exactly what
-        # it does and why) runs only in a background thread, at most once
-        # every _STANDBY_CHECK_INTERVAL_S -- never from
-        # go_to_standby()/play() themselves. Every footswitch press,
-        # including STOP, reads an in-memory value that the checker last
-        # found and does zero disk I/O of its own: this is a
-        # live-performance-facing hot path, and STOP in particular must
-        # stay instant regardless of what the USB happens to be doing.
+        # Checked exactly once, in start() -- not continuously. Approved
+        # operational policy: the musician powers the Pi off, swaps the
+        # USB's content on a computer, plugs it back in, and powers the
+        # Pi back on -- editing the library while the show is actively
+        # running is explicitly not a supported workflow, so there's no
+        # need to detect a USB inserted or removed mid-session, only
+        # whether it's there at boot. An earlier version re-checked this
+        # every couple of seconds in a background thread specifically to
+        # support that mid-session case; removed since it no longer
+        # matches how this is actually meant to be used, and every check
+        # was that much more surface for something to go wrong (see the
+        # overlay-filesystem incompatibility resolved in
+        # _usb_device_is_present() below, for one).
         self.standby_path = standby_path
         self.fallback_standby_path = fallback_standby_path
-        self._resolved_standby_lock = threading.Lock()
-        self._resolved_standby = standby_path  # corrected by the first check, right below, before this is ever relied on
-        self._stop_standby_checker = threading.Event()
-        self._standby_checker_thread: Optional[threading.Thread] = None
+        self.usb_uuid = usb_uuid
+        self._resolved_standby: Optional[str] = None  # set once in start()
         self._mpv = _MpvProcess(
             socket_path=socket_path,
             extra_args=[
@@ -303,11 +299,9 @@ class Player:
         )
         # Tracks *which* standby file (real or fallback) is currently
         # playing, or None if we're playing a real clip instead. Lets
-        # go_to_standby() both avoid restarting the loop when nothing
-        # needs to change, and correctly switch over if the USB gets
-        # inserted/removed between calls -- see go_to_standby() below.
+        # go_to_standby() avoid restarting the loop when nothing needs to
+        # change -- see go_to_standby() below.
         self._current_standby_path: Optional[str] = None
-        self._queued_standby_path: Optional[str] = None
         # Called (no arguments) when a real clip finishes playing on its
         # own -- set by the Core. Note this is a *different* thing from
         # the raw mpv "end-file" event: by the time this fires, standby is
@@ -321,82 +315,49 @@ class Player:
         return self._mpv.socket_path
 
     def start(self):
-        """Launches mpv, connects to its IPC socket, and starts looping
-        the standby video."""
+        """Launches mpv, connects to its IPC socket, checks exactly once
+        whether the library USB is present (see _usb_device_is_present()),
+        and starts looping the resulting standby video (real or
+        fallback)."""
         self._mpv.start()
-        # One synchronous check up front so the very first go_to_standby()
-        # call, right below, doesn't have to trust an unverified initial
-        # guess -- every check after this one happens in the background.
-        self._resolved_standby = self._probe_standby_path()
-        self._standby_checker_thread = threading.Thread(
-            target=self._standby_checker_loop, daemon=True
+        self._resolved_standby = (
+            self.standby_path if self._usb_device_is_present() else self.fallback_standby_path
         )
-        self._standby_checker_thread.start()
         self.go_to_standby()
 
     def stop(self):
-        self._stop_standby_checker.set()
-        if self._standby_checker_thread is not None:
-            self._standby_checker_thread.join(timeout=2)
         self._mpv.stop()
 
-    def _standby_checker_loop(self):
-        """Runs in its own thread for as long as the Player is started:
-        the only place that ever actually touches disk to answer "is the
-        real standby reachable right now" -- see the note in __init__ on
-        why this is kept off the hot request path entirely."""
-        while not self._stop_standby_checker.is_set():
-            resolved = self._probe_standby_path()
-            with self._resolved_standby_lock:
-                changed = resolved != self._resolved_standby
-                self._resolved_standby = resolved
-            if changed and self._current_standby_path is not None:
-                # Already sitting on standby (real or fallback), not
-                # mid-clip -- reflect the change on screen right away
-                # instead of waiting for the next footswitch press to
-                # happen to notice. go_to_standby() re-reads the value
-                # just stored above and is a no-op if there's somehow
-                # nothing to change; never called here while a real clip
-                # is playing (_current_standby_path is None then), so
-                # this can't interrupt one.
-                self.go_to_standby()
-            self._stop_standby_checker.wait(_STANDBY_CHECK_INTERVAL_S)
-
-    def _probe_standby_path(self) -> str:
-        """The real disk check. Only ever called from
-        _standby_checker_loop (or once, synchronously, from start())."""
-        if self._usb_device_is_present():
-            return self.standby_path
-        return self.fallback_standby_path
-
     def _usb_device_is_present(self) -> bool:
-        """Whether the block device actually backing standby_path's mount
-        point still physically exists.
+        """Whether the library USB (identified by its filesystem UUID,
+        usb_uuid) is physically plugged in right now. Called exactly once,
+        from start() -- see the note in __init__ on why this project
+        doesn't re-check this while already running.
 
-        Two earlier versions of this check -- reading a byte of
-        standby_path, then os.statvfs() on its directory -- both turned
-        out unreliable in practice: this ntfs-3g/FUSE mount keeps
-        answering both from its own cached state even with the USB
-        completely unplugged (confirmed live -- `lsblk` shows nothing,
-        yet a content read and even statvfs() on the mount point both
-        kept succeeding). What's actually authoritative is whether the
-        `/dev` device node the mount table says is backing this mount
-        point still exists: the kernel removes that node immediately on
-        physical disconnection, well before -- and independently of --
-        whatever the FUSE daemon on top of it has cached or still
-        believes."""
-        mount_point = os.path.dirname(self.standby_path)
-        device = None
-        try:
-            with open("/proc/mounts") as f:
-                for line in f:
-                    fields = line.split()
-                    if len(fields) >= 2 and fields[1] == mount_point:
-                        device = fields[0]
-                        break
-        except OSError:
-            return False
-        return device is not None and os.path.exists(device)
+        Three earlier versions of this check turned out unreliable in
+        practice:
+        - Reading a byte of standby_path, and separately os.statvfs() on
+          its directory: both kept answering from this ntfs-3g/FUSE
+          mount's own cached state even with the USB completely
+          unplugged (confirmed live -- `lsblk` showed nothing, yet both
+          still succeeded).
+        - Looking up standby_path's mount point in /proc/mounts and
+          checking whether *that* device node still exists: reliable on
+          its own, but broke once the root filesystem overlay was
+          enabled (section on `systemd/`/overlayfs) -- with it active,
+          /media/usb's own entry in /proc/mounts is itself an overlay
+          (lowerdir=/media/root-ro/media/usb), not the real device, and
+          that lowerdir path is a directory that always exists on disk
+          regardless of whether anything is actually mounted there --
+          confirmed live, this made the check permanently report
+          "present" no matter what.
+
+        Checking /dev/disk/by-uuid/<usb_uuid> directly sidesteps both
+        problems: it's populated live by udev from the actual attached
+        block devices, is unaffected by whatever the root filesystem is
+        doing (overlay or not), and doesn't depend on standby_path's
+        mount point being nested at any particular place."""
+        return os.path.exists(f"/dev/disk/by-uuid/{self.usb_uuid}")
 
     def play(self, path: str):
         """Loads and plays a real video clip. Always issues a fresh
@@ -414,22 +375,8 @@ class Player:
         self._mpv.send({"command": ["loadfile", path, "replace"]})
         self._mpv.send({"command": ["set_property", "loop-file", "no"]})
         self._mpv.send({"command": ["set_property", "mute", False]})
-        # Resolved once, now, rather than again when the end-file event
-        # fires: what actually gets queued is what mpv will actually play
-        # next, regardless of whether the USB's presence happens to
-        # change while this clip is playing.
-        self._queued_standby_path = self._resolve_standby_path()
-        self._mpv.send({"command": ["loadfile", self._queued_standby_path, "append"]})
+        self._mpv.send({"command": ["loadfile", self._resolved_standby, "append"]})
         self._current_standby_path = None
-
-    def _resolve_standby_path(self) -> str:
-        """Cheap, synchronous, in-memory read of whatever the background
-        checker thread last found (see _standby_checker_loop /
-        _probe_standby_path) -- called from play() and go_to_standby(),
-        i.e. on every single footswitch press including STOP, so this
-        must never touch disk itself."""
-        with self._resolved_standby_lock:
-            return self._resolved_standby
 
     def go_to_standby(self):
         """Immediate, highest-priority action -- returns to the looping
@@ -437,20 +384,15 @@ class Player:
         when a video clip finishes playing on its own, and whenever an
         audio-only track is selected (see AudioPlayer).
 
-        A no-op if the correct standby (real or fallback, per
-        _resolve_standby_path()'s in-memory value) is already showing: the
+        A no-op if the correct standby (real or fallback, decided once at
+        startup -- see _usb_device_is_present()) is already showing: the
         Core calls this defensively before every audio-only track (to
         make sure the video lane isn't mid-clip), and on every STOP --
         without this guard, each of those calls would reissue
         'loadfile ... replace' and visibly restart the loop from position
         0, even though nothing actually needed to change. This was caught
         by ear: the standby video was visibly jumping back to its start on
-        every single footswitch press. Comparing against the background
-        checker's latest answer (rather than caching a decision once at
-        startup) is what lets inserting or removing the USB while running
-        be picked up automatically, the next time anything triggers a
-        standby transition -- within _STANDBY_CHECK_INTERVAL_S, not
-        instantly, since that check itself only runs in the background.
+        every single footswitch press.
 
         The standby video is muted (mute=True), not audio-track-disabled:
         an earlier version used aid=no/aid=auto to fully disable/re-enable
@@ -466,13 +408,12 @@ class Player:
         (see _FIXED_AUDIO_SAMPLE_RATE above) is precisely what it's
         designed to do, so this isn't expected to reintroduce the
         original crackling."""
-        target = self._resolve_standby_path()
-        if self._current_standby_path == target:
+        if self._current_standby_path == self._resolved_standby:
             return
-        self._mpv.send({"command": ["loadfile", target, "replace"]})
+        self._mpv.send({"command": ["loadfile", self._resolved_standby, "replace"]})
         self._mpv.send({"command": ["set_property", "loop-file", "inf"]})
         self._mpv.send({"command": ["set_property", "mute", True]})
-        self._current_standby_path = target
+        self._current_standby_path = self._resolved_standby
 
     def _handle_end_file(self, reason: str):
         """Reacts to mpv's raw end-file event for this lane. A reason of
@@ -487,10 +428,7 @@ class Player:
             return
         self._mpv.send({"command": ["set_property", "loop-file", "inf"]})
         self._mpv.send({"command": ["set_property", "mute", True]})
-        # Whatever play() queued via append is what mpv actually switched
-        # to -- not necessarily what _resolve_standby_path() would return
-        # right now, if the USB's presence changed while the clip played.
-        self._current_standby_path = self._queued_standby_path
+        self._current_standby_path = self._resolved_standby
         if self.on_clip_finished is not None:
             self.on_clip_finished()
 

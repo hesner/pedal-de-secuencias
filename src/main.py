@@ -5,7 +5,8 @@ Mapper to the Core, so every controller action actually drives audio/video
 playback -- unlike live_test.py, which only prints what would happen.
 
 Usage (on the Raspberry Pi):
-    python3 src/main.py --usb-root /media/usb --standby /media/usb/standby.mp4
+    python3 src/main.py --usb-root /media/usb --standby /media/usb/standby.mp4 \
+        --usb-uuid 07C1339846657D95
 
 Ctrl+C to exit.
 """
@@ -43,6 +44,20 @@ def parse_args():
             "inserted, or removed while running). Generate it with "
             "scripts/generate_fallback_standby.sh. "
             "(default: ~/pedal-assets/fallback-standby.mp4)"
+        ),
+    )
+    parser.add_argument(
+        "--usb-uuid",
+        required=True,
+        help=(
+            "Filesystem UUID of the library USB drive (get it with "
+            "`sudo blkid /dev/sda1`, or whatever device it shows up as -- "
+            "the same UUID used in /etc/fstab, see systemd/README.md). Used "
+            "to detect whether the USB is physically plugged in right now "
+            "(checks /dev/disk/by-uuid/<this>) -- more reliable than "
+            "checking --standby's path directly or its mount point, both of "
+            "which can misreport presence (confirmed live, see the note on "
+            "Player._usb_device_is_present() in src/core/player.py)."
         ),
     )
     parser.add_argument(
@@ -84,7 +99,12 @@ def main():
 
     mapper = Mapper(tracks_per_group=4)
     library = Library(usb_root=args.usb_root)
-    player = Player(standby_path=args.standby, fallback_standby_path=args.fallback_standby)
+    player = Player(
+        standby_path=args.standby,
+        fallback_standby_path=args.fallback_standby,
+        usb_uuid=args.usb_uuid,
+        drm_mode=args.drm_mode,
+    )
     audio_player = AudioPlayer()
     core = Core(library=library, player=player, audio_player=audio_player)
     core.start()

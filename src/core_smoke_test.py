@@ -61,6 +61,12 @@ def main():
     player = Player(
         standby_path=args.standby,
         fallback_standby_path="/nonexistent/fallback.mp4",
+        # Irrelevant here too -- this test doesn't exercise USB
+        # presence/absence, just play()/go_to_standby() against
+        # whatever --standby points at. (Format matches a real NTFS
+        # UUID as reported by blkid -- no dashes -- purely for
+        # consistency, since this value is never actually looked up.)
+        usb_uuid="0000000000000000",
         socket_path="/tmp/pedal-smoke-test.sock",
     )
     player.start()

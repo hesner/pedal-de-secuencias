@@ -4,8 +4,10 @@ Makes the pedal start playing (standby loop, listening for the MIDI
 controller) automatically when the Raspberry Pi is powered on, with no
 screen or keyboard needed (section 1 of `MASTER_SPECIFICATION.md`).
 
-Two pieces: an `/etc/fstab` entry so the library USB mounts on its own,
-and a `systemd` service that runs `src/main.py`.
+Three pieces, applied in this order: an `/etc/fstab` entry so the library
+USB mounts on its own, a `systemd` service that runs `src/main.py`, and
+(as the final, deliberately-last step) a read-only overlay on the Pi's
+own root filesystem.
 
 ## 1. Library USB — `/etc/fstab`
 
@@ -25,8 +27,7 @@ UUID=07C1339846657D95  /media/usb  ntfs-3g  ro,nofail,x-systemd.device-timeout=1
   at boot, don't hang the boot sequence waiting for it -- give up after
   10s and continue. `pedal-core.service` (below) handles the USB still
   being absent after that by falling back to the local standby video
-  (see `src/core/player.py`) and simply not finding any setlist content
-  until it's plugged in.
+  (see `src/core/player.py`).
 
 Test the line **without rebooting** before trusting it:
 
@@ -51,10 +52,11 @@ journalctl -u pedal-core -f
 ```
 
 The unit as committed here hardcodes this project's current dev checkout
-path (`/home/hesner/pedal_src_test`) and user (`hesner`) -- edit
-`ExecStart`/`User` in `pedal-core.service` if either ever changes (e.g.
-once this graduates from a dev checkout to a proper `git clone`d
-deployment path).
+path (`/home/hesner/pedal_src_test`), user (`hesner`), and this specific
+USB's UUID (`--usb-uuid=07C1339846657D95`) -- edit `ExecStart`/`User` in
+`pedal-core.service` if any of those ever change (e.g. once this
+graduates from a dev checkout to a proper `git clone`d deployment path,
+or the library USB drive itself is ever replaced with a different one).
 
 `Restart=always` means the service keeps retrying every 5s if it exits
 for any reason (M-VAVE not enumerated yet, USB not mounted yet, ...) --
@@ -73,37 +75,82 @@ never tears this service down because of what the USB does afterward.
 
 ## USB behavior (final decision)
 
-Automatic mounting only happens **at boot** (the `fstab` entry above). A
-fully automatic hot-swap while the system is already running (unplug,
-edit the setlist files from a computer, replug, keep going with no
-manual step at all) was attempted using a `udev` rule plus a companion
-remount service, but proved unreliable on this hardware/filesystem combo
-in practice: the mount point doesn't notice its underlying device
-disappearing, a replugged drive often re-enumerates under a *different*
-device node (`sdb` instead of `sda`), a normal unmount fails because
-`pedal-core.service`'s own `mpv` keeps the standby video open
-continuously, and a real USB (re)connection can fire more than one
-matching `udev` event close together, racing two remount attempts against
-each other. After several rounds of fixes each addressing one of those
-issues, the approach was abandoned as not worth the fragility -- **decided
-final behavior:**
+Approved operational policy: the musician powers the Pi off, swaps the
+USB's content on a separate computer, plugs the USB back into the Pi,
+and powers the Pi back on. Editing the library while the show is
+actively running is explicitly **not** a supported workflow.
 
-- **USB missing at boot** (or removed at any point while running): the
-  video lane's background checker (`Player._standby_checker_loop`,
-  `src/core/player.py`) detects this within a couple of seconds via
-  `os.statvfs()` on the library's mount point, and switches on its own to
-  the local fallback standby ("Please insert the USB into the Raspberry
-  Pi") -- no manual step needed just to show that message, at boot or
-  mid-session alike.
-- **Recovering real content after a mid-session disconnect**: requires
-  power-cycling the Raspberry Pi (reinsert the USB, then reboot). There is
-  no supported way to make the system pick the real content back up
-  without a reboot once it has been unplugged while running.
+A fully automatic hot-swap while the system keeps running (unplug, edit,
+replug, keep going with no manual step or reboot at all) was attempted
+using a `udev` rule plus a companion remount service, and separately
+using a background thread that re-checked USB presence every couple of
+seconds -- both approaches were abandoned: the `udev`/remount path proved
+unreliable in practice on this hardware/filesystem combination (stale
+mounts after unplug, the reconnected drive re-enumerating under a
+different device node, `pedal-core.service`'s own `mpv` keeping the mount
+busy, duplicate `udev` events racing two remount attempts against each
+other), and once the actual operational policy was clarified to always
+involve a reboot anyway, the background re-checking no longer matched how
+this is really used and was simplified away.
+
+**Decided final behavior**, implemented in `Player` (`src/core/player.py`):
+
+- Whether the library USB is present is checked **exactly once, at
+  startup** -- via `/dev/disk/by-uuid/<usb_uuid>` (the same UUID as in
+  `/etc/fstab` and `--usb-uuid`), not by checking `--standby`'s path or
+  its mount point directly. Both of the latter were tried first and found
+  unreliable: `/dev/disk/by-uuid/` is populated live by udev from the
+  actually-attached block devices and is unaffected by the root
+  filesystem overlay (below); the other approaches gave false positives
+  under one condition or the other (see the docstring on
+  `Player._usb_device_is_present()` for the specifics of each).
+- **USB missing at boot**: the local fallback standby plays instead
+  ("Please insert the USB into the Raspberry Pi").
+- **USB removed while already running**: not detected -- the system
+  keeps showing/playing whatever it already had. Recovering (or first
+  picking up a library update made while off) always requires a reboot;
+  there is no supported way to make it happen without one.
+
+## 3. Read-only root filesystem (final lock-down step)
+
+Requirement: it must be safe to power the Pi off at any moment (pull the
+plug) without risking corruption of its own filesystem -- this appliance
+has no shutdown button. `MASTER_SPECIFICATION.md`'s read-only-library
+requirement (section 2) already covers the USB; this covers the Pi's own
+SD card.
+
+Enabled via Raspberry Pi OS's built-in overlay filesystem (`raspi-config`
+→ Performance Options → Overlay File System), which also write-protects
+`/boot/firmware`:
+
+```
+sudo raspi-config nonint do_overlayfs 0   # enable (1 to disable again)
+sudo reboot
+```
+
+After reboot, `/` is an `overlay` (`mount | grep ' / '` shows
+`lowerdir=/media/root-ro` -- the real SD card, mounted `ro` -- with
+`upperdir=/media/root-rw` on `tmpfs`, i.e. RAM). Every write during
+normal operation lands in RAM and is discarded on every reboot; the SD
+card itself is never touched, so an abrupt power loss can't corrupt it.
+
+**Apply this last, once there's no more Pi-side development expected**:
+anything written to the Pi while the overlay is active (including
+syncing a new version of this code) is lost on the next reboot, since it
+only ever lands in the RAM-backed upper layer. To make further changes:
+temporarily disable (`do_overlayfs 1`, reboot), make and verify the
+changes normally, then re-enable (`do_overlayfs 0`, reboot) once done.
+
+Accepted trade-off, confirmed acceptable: `~/pedal-core.log` and the
+systemd journal become ephemeral too (wiped every reboot, along with
+everything else on `/`) -- acceptable since they're only ever used
+live, during an active debugging session over SSH, not read back after
+the fact.
 
 ## Maintenance / physical access
 
-Running this as a service means `mpv` permanently occupies the HDMI
-output (see `--force-window=yes` in `src/core/player.py`) -- this is a
+Running the service means `mpv` permanently occupies the HDMI output
+(see `--force-window=yes` in `src/core/player.py`) -- this is a
 software-level thing, not an OS-level lockout. To get the physical
 console/login back for maintenance:
 
@@ -112,4 +159,7 @@ sudo systemctl stop pedal-core
 ```
 
 SSH access is unaffected either way, regardless of what the service is
-doing.
+doing. If the overlay filesystem (section 3) is active, note that
+`sudo` commands still work as usual -- only writes to `/` and
+`/boot/firmware` land in the RAM-backed overlay instead of the real SD
+card, they don't fail.
