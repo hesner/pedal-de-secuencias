@@ -43,7 +43,7 @@ These decisions are closed. Claude may ask for clarification, but must not propo
 | Architecture | Modular, layered (see section 3) |
 | Protocol | Standard MIDI — no proprietary controller feature may leak into the Core |
 | Future-proofing | Must support replacing the current MIDI controller with another without touching the Core; a future web admin portal is possible |
-| License/visibility | Open source project |
+| License/visibility | Open source project, MIT license -- maximally permissive, commercial use allowed, no copyleft |
 | Documentation | Bilingual, English and Spanish |
 | Roles | The user defines architecture/specification together with Claude (chat); **Claude Code is the implementation agent**. No other AI tool is involved in the project |
 | Development environment | Claude Code runs **natively on Windows** (no WSL2). Everything hardware/OS-specific (audio, MIDI, video, systemd) is tested directly against the real Raspberry Pi via SSH, not in a simulated Linux environment on the PC |
