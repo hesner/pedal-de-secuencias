@@ -226,7 +226,23 @@ class _MpvProcess:
 
 class Player:
     """The video lane -- always shows something on screen: the looping
-    standby video, or a real video clip with embedded audio."""
+    standby video, or a real video clip with embedded audio.
+
+    drm_mode picks which physical display refresh rate mpv drives the
+    screen at (mpv's --drm-mode; run `mpv --drm-mode=help` on the Pi with
+    the real screen connected to see what it supports, as
+    "WxH@refresh_hz", e.g. "1920x1080@25"). Defaults to mpv's own
+    "preferred" (usually 60Hz) deliberately, not as an oversight: forcing
+    the display's native mode to match standby.mp4's real 25fps was
+    tested on the actual show TV (which does support a native 25Hz mode)
+    and measured no benefit at all -- drop-frame-count was already 0 at
+    60Hz, CPU usage for the video lane was statistically the same either
+    way (~100%, a full core, inherent to this rendering pipeline on this
+    SoC, unrelated to the refresh-rate mismatch that was suspected) --
+    while looking visibly worse side by side, confirmed by the user
+    watching both on the real TV. See TESTING.md. Left configurable
+    (rather than removed) in case a future display/content combination
+    benefits where this one didn't."""
 
     def __init__(
         self,
@@ -234,6 +250,7 @@ class Player:
         fallback_standby_path: str,
         socket_path: str = "/tmp/pedal-mpv-video.sock",
         audio_device: str = "alsa/mixcodec",
+        drm_mode: str = "preferred",
     ):
         # standby_path normally lives on the library USB; fallback_standby_path
         # lives locally on the Pi's own storage (see
@@ -266,7 +283,19 @@ class Player:
                 "--force-window=yes",
                 "--hwdec=v4l2m2m-copy",
                 "--gpu-context=drm",
+                f"--drm-mode={drm_mode}",
                 "--vo=gpu",
+                # Audio must never stutter, skip, or drift during a live
+                # show -- video is allowed to freeze or drop frames
+                # instead. This is already mpv's own default, confirmed
+                # in practice in TESTING.md (the alternative,
+                # --video-sync=display-resample, was tried and discarded
+                # specifically because it sacrificed audio sync), but set
+                # explicitly here rather than relying on an unstated
+                # default that could change in a future mpv version:
+                # audio is the timing master, video frames are
+                # dropped/repeated to keep up with it, never the reverse.
+                "--video-sync=audio",
                 f"--audio-device={audio_device}",
                 f"--audio-samplerate={_FIXED_AUDIO_SAMPLE_RATE}",
                 "--audio-channels=stereo",

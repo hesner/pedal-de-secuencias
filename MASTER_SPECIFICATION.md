@@ -35,6 +35,7 @@ These decisions are closed. Claude may ask for clarification, but must not propo
 | Audio | MP3 and WAV playback. Both are audio-only formats and behave identically: the standby video keeps looping on screen while the audio plays over it |
 | Video | MP4/MOV/MPEG, H.264 codec |
 | Audio-video sync | Video clips carry their audio embedded in the same file (not separate tracks). Video and audio of the same clip must **never drift out of sync**; this is a critical requirement, not merely desirable. Standalone MP3/WAV files (the "Audio" row) are for audio-only library items, unrelated to video-clip sync |
+| Audio/video priority | **Audio always takes priority over video.** Audio must never stutter, skip, or lag during a live performance; video is allowed to freeze or drop frames instead if the two ever have to trade off. Audio is the timing master: video conforms to it, never the other way around (`mpv --video-sync=audio`, `src/core/player.py`) |
 | Idle mode | Standby video (`standby.mp4`) looping when nothing is playing |
 | Video transition | Must be smooth (no abrupt cuts) between clips and standby |
 | STOP | A global, highest-priority action; it must stop everything immediately |

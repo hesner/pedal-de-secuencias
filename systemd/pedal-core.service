@@ -15,6 +15,13 @@ After=media-usb.mount sound.target network.target
 [Service]
 Type=simple
 User=hesner
+# --drm-mode left at its default (preferred, usually 60Hz) on purpose:
+# forcing the display's native 25fps mode to match standby.mp4's real
+# frame rate was tried on the real show TV (which does support it) and
+# measured no improvement at all -- drop-frame-count was already 0 at
+# 60Hz, CPU usage was statistically the same -- while looking visibly
+# worse than 60Hz side by side (confirmed by the user watching both).
+# See TESTING.md.
 ExecStart=/usr/bin/python3 /home/hesner/pedal_src_test/src/main.py --usb-root /media/usb --standby /media/usb/standby.mp4 --fallback-standby /home/hesner/pedal-assets/fallback-standby.mp4 --log-file /home/hesner/pedal-core.log
 # Appliance behavior (section 1 of MASTER_SPECIFICATION.md): no one is
 # available to restart this by hand if it exits -- e.g. the M-VAVE not

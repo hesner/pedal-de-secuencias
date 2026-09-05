@@ -46,6 +46,22 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--drm-mode",
+        default="preferred",
+        help=(
+            "Display refresh rate to drive the screen at (mpv's --drm-mode). "
+            "Default 'preferred' (usually 60Hz) is the recommended choice: "
+            "forcing the display's native mode to match the content's real "
+            "frame rate (e.g. '1920x1080@25') was tested on the real show TV "
+            "and made no measurable difference to frame drops or CPU usage, "
+            "while looking visibly worse side by side (see TESTING.md). Left "
+            "configurable in case a future display/content combination "
+            "benefits where this one didn't -- run `mpv --drm-mode=help` on "
+            "the Pi with the real screen connected to see what it supports. "
+            "(default: preferred)"
+        ),
+    )
+    parser.add_argument(
         "--log-file",
         default=os.path.expanduser("~/pedal-core.log"),
         help="Where to write the Core's log (default: ~/pedal-core.log)",

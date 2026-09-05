@@ -71,3 +71,16 @@ With the same 5V/2.5A charger already validated above, a second isolated undervo
 The hardware (Raspberry Pi 2 Rev 1.1 + USB Behringer + M-VAVE + library USB, with a 5V/2.5A supply) sustains simultaneous audio+video playback without desync and without exhausting CPU/RAM — the section 2 critical requirement (audio and video of the same clip never out of sync) is validated.
 
 **Section 4.0 cannot be considered fully closed** until the frame-drop check is repeated with a screen representative of the show (a real TV, not the PC monitor used in this test) — there is evidence that the issue found is specific to this test monitor's refresh limitations (no native 1080p30 mode) and likely won't reproduce with a real TV. This remains a follow-up task; it does not block continuing with the M-VAVE analysis (section 4.1) while a suitable test screen is obtained.
+
+### Real-TV frame-rate test (2026-09-05, closes the follow-up above)
+
+Repeated with the actual show TV (moved the Pi there, full cold power-cycle -- also incidentally the first real validation that `systemd` auto-boot, section on `systemd/` below, works end to end from a genuine power-off, not just a `systemctl restart`).
+
+- **The hypothesis was right:** `sudo modetest -c` confirmed this TV natively supports 1920x1080 at 24.00, 23.98, 25.00, 29.97, 30.00, and 50.00Hz (`mpv --drm-mode=help` lists the same set) -- none of which the original PC test monitor offered.
+- **But forcing the matching mode wasn't worth it.** The real standby video is 25fps; forcing `--drm-mode=1920x1080@25` (vs. mpv's default `preferred`, which negotiates 60Hz on this TV) was A/B compared directly against the default, same content, same TV:
+  - `drop-frame-count` was already `0` at 60Hz -- no frames were being dropped to begin with, so there was nothing for the matching mode to fix on that front.
+  - CPU usage for the video lane was statistically the same either way (~100-105%, a full core) -- confirmed by testing with `--force-window` and the fixed audio sample rate removed too, ruling those out as the cause. This appears to be inherent to rendering this content via `--vo=gpu`/`v4l2m2m-copy` on this SoC, unrelated to the refresh-rate match. Not a blocking issue on its own -- the Pi 2 has 4 cores, and this never caused a dropped frame, a MIDI miss, or an audio glitch in any test today -- but it is a real, open characteristic of the current video pipeline, not explained further here.
+  - **Visual quality was worse at 25Hz**, confirmed by the user watching both side by side on the real TV.
+- **Decision:** kept `--drm-mode=preferred` (the default) in production. Made configurable via `--drm-mode` on `src/main.py` / `Player`, in case a future display or content combination benefits where this one measurably didn't.
+
+Section 4.0 is now closed: audio-video sync validated, and the frame-rate-mismatch line of investigation from the original PC-monitor test was followed through to a real TV and a real, evidence-based conclusion (not a fix, but a confirmed non-issue) rather than left open.
