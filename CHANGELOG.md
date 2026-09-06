@@ -10,8 +10,8 @@ date instead until that changes.
 ## 2026-09-05 -- Initial public release
 
 First open-source release. Actively used and validated against real
-hardware (Raspberry Pi 2, Behringer USB audio interface, M-VAVE PD41
-MIDI controller, library USB drive).
+hardware (Raspberry Pi 2, Behringer U-PHORIA UM2 USB audio interface,
+M-VAVE PD41 MIDI controller, library USB drive).
 
 - Layered architecture (Adapter → Mapper → Core) so controller-specific
   code never leaks into playback logic.

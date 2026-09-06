@@ -12,8 +12,8 @@ fecha hasta que eso cambie.
 ## 2026-09-05 -- Primera publicación open source
 
 Primer release open source. En uso activo y validado contra hardware
-real (Raspberry Pi 2, interfaz de audio USB Behringer, controlador MIDI
-M-VAVE PD41, USB de biblioteca).
+real (Raspberry Pi 2, interfaz de audio USB Behringer U-PHORIA UM2,
+controlador MIDI M-VAVE PD41, USB de biblioteca).
 
 - Arquitectura por capas (Adapter → Mapper → Core) para que el código
   específico de un controlador nunca se filtre a la lógica de
