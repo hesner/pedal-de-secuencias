@@ -9,6 +9,13 @@ fecha hasta que eso cambie.
 
 ## [Sin publicar]
 
+- **Arreglado**: arrancar sin el USB de biblioteca caía en systemd
+  emergency mode (sin SSH, irrecuperable en un appliance sin pantalla)
+  en vez del standby de respaldo local. Causa: el `recurse=1` por
+  defecto del overlay envuelve todos los mounts (incluido `/media/usb`)
+  en su propio overlay sin `nofail`, así que un USB ausente hacía
+  fallar un mount crítico para el arranque. Arreglado con `recurse=0`
+  (solo raíz) en `cmdline.txt` — ver `systemd/README.md` sección 4.
 - Se agregó `LIBRARY.md` (en/es): cómo nombrar carpetas/archivos del USB
   de biblioteca, y el error exacto de espaciado en el nombre de archivo
   (`A  - x.mov` vs `A - x.mov`) que falla completamente en silencio —

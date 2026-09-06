@@ -41,13 +41,9 @@ Using [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
    ```
    ssh <your-username>@<hostname>.local
    ```
-   **`.local` (mDNS) resolution is not fully reliable in practice** --
-   this project hit it repeatedly during its own development (works
-   fine most of the time, occasionally just doesn't resolve for no
-   obvious reason, especially over WiFi or after the Pi's been moved to
-   a different physical spot). If it doesn't resolve, get the Pi's IP
-   from your router's DHCP client list instead and `ssh
-   <your-username>@<that-ip>`.
+   `.local` (mDNS) resolution isn't fully reliable in practice (known
+   flaky over WiFi). If it doesn't resolve, get the Pi's IP from your
+   router's DHCP client list instead and `ssh <your-username>@<that-ip>`.
 
 ## 1. Software prerequisites
 
@@ -142,30 +138,20 @@ USB's content on a separate computer, plugs the USB back into the Pi,
 and powers the Pi back on. Editing the library while the show is
 actively running is explicitly **not** a supported workflow.
 
-A fully automatic hot-swap while the system keeps running (unplug, edit,
-replug, keep going with no manual step or reboot at all) was attempted
-using a `udev` rule plus a companion remount service, and separately
-using a background thread that re-checked USB presence every couple of
-seconds -- both approaches were abandoned: the `udev`/remount path proved
-unreliable in practice on this hardware/filesystem combination (stale
-mounts after unplug, the reconnected drive re-enumerating under a
-different device node, `pedal-core.service`'s own `mpv` keeping the mount
-busy, duplicate `udev` events racing two remount attempts against each
-other), and once the actual operational policy was clarified to always
-involve a reboot anyway, the background re-checking no longer matched how
-this is really used and was simplified away.
+A fully automatic hot-swap (unplug, edit, replug, no reboot) was
+attempted via `udev` + a remount service and separately via background
+polling; both were abandoned as unreliable on this hardware/filesystem
+combination -- see `CHANGELOG.md`/git history if you're tempted to
+rebuild one.
 
 **Decided final behavior**, implemented in `Player` (`src/core/player.py`):
 
 - Whether the library USB is present is checked **exactly once, at
   startup** -- via `/dev/disk/by-uuid/<usb_uuid>` (the same UUID as in
-  `/etc/fstab` and `--usb-uuid`), not by checking `--standby`'s path or
-  its mount point directly. Both of the latter were tried first and found
-  unreliable: `/dev/disk/by-uuid/` is populated live by udev from the
-  actually-attached block devices and is unaffected by the root
-  filesystem overlay (below); the other approaches gave false positives
-  under one condition or the other (see the docstring on
-  `Player._usb_device_is_present()` for the specifics of each).
+  `/etc/fstab` and `--usb-uuid`). Checking `--standby`'s path or its
+  mount point directly was tried first and found unreliable under the
+  root filesystem overlay below (see the docstring on
+  `Player._usb_device_is_present()` for specifics).
 - **USB missing at boot**: the local fallback standby plays instead
   ("Please insert the USB into the Raspberry Pi").
 - **USB removed while already running**: not detected -- the system
@@ -182,13 +168,26 @@ requirement (section 2) already covers the USB; this covers the Pi's own
 SD card.
 
 Enabled via Raspberry Pi OS's built-in overlay filesystem (`raspi-config`
-→ Performance Options → Overlay File System), which also write-protects
-`/boot/firmware`:
+→ Performance Options → Overlay File System):
 
 ```
 sudo raspi-config nonint do_overlayfs 0   # enable (1 to disable again)
-sudo reboot
 ```
+
+Then edit `/boot/firmware/cmdline.txt` (remount it `rw` first: `sudo
+mount -o remount,rw /boot/firmware`) and append `:recurse=0` to the
+`overlayroot=tmpfs` parameter it just added, so the line reads
+`overlayroot=tmpfs:recurse=0`. Remount `/boot/firmware` back to `ro`
+and `sudo reboot`.
+
+**`recurse=0` is required, not optional**: the default (`recurse=1`)
+wraps every mount in its own overlay, including `/media/usb` -- and that
+auto-generated overlay has no `nofail`, so booting without the library
+USB dropped straight into systemd emergency mode (no SSH, unrecoverable
+on a headless appliance) instead of falling back to the local standby
+the way section 2/3 intend. `recurse=0` limits the overlay to `/` only;
+`/media/usb` and `/boot/firmware` already have their own `ro` in
+`/etc/fstab` regardless, so they lose no protection.
 
 After reboot, `/` is an `overlay` (`mount | grep ' / '` shows
 `lowerdir=/media/root-ro` -- the real SD card, mounted `ro` -- with
@@ -201,7 +200,9 @@ anything written to the Pi while the overlay is active (including
 syncing a new version of this code) is lost on the next reboot, since it
 only ever lands in the RAM-backed upper layer. To make further changes:
 temporarily disable (`do_overlayfs 1`, reboot), make and verify the
-changes normally, then re-enable (`do_overlayfs 0`, reboot) once done.
+changes normally, then re-enable -- `do_overlayfs 0` resets
+`overlayroot=tmpfs` **without** `:recurse=0`, so redo that edit to
+`cmdline.txt` every time before rebooting back into it.
 
 Accepted trade-off, confirmed acceptable: `~/pedal-core.log` and the
 systemd journal become ephemeral too (wiped every reboot, along with

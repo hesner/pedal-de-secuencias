@@ -61,11 +61,7 @@ Mayúsculas/minúsculas no importan ni en la letra ni en la extensión
 **Este es el error más fácil de cometer**, y falla completamente en
 silencio — ningún error en ningún lado, el footswitch simplemente no
 hace nada, porque un nombre de archivo que no calza se ve idéntico a un
-espacio vacío intencional. Ya pasó una vez durante las pruebas de este
-mismo proyecto: un archivo llamado `A  - IMG_0896.MOV` (dos espacios
-antes del guion, fácil de teclear por accidente) no se reprodujo, sin
-nada en el log que explicara por qué más allá de "no hay archivo para la
-pista A (espacio vacío)".
+espacio vacío intencional.
 
 ```
 A - mi canción.mp3        <- correcto
@@ -109,13 +105,6 @@ ffmpeg -i entrada.mov -c:v libx264 -pix_fmt yuv420p -vf scale=-2:1080 \
 Si un video se ve bien en un teléfono/computador pero no a través del
 pedal, revisa su códec (`ffmpeg -i <archivo>` lo muestra en la línea
 `Video:`) antes de sospechar del nombre del archivo, y re-codifica con
-el comando de arriba.
-
-Esta situación exacta ya pasó durante las pruebas de este mismo
-proyecto —y se combinó con el error de nombre de arriba, en el mismo
-archivo—: `A  - IMG_0896.MOV` no solo estaba mal nombrado, `ffmpeg -i`
-también mostró que era `hevc (Main 10) ... 3840x2160, 59.94 fps` — 4K,
-10-bit, HEVC, 60fps, cada parte de lo cual está por encima de lo que
-este hardware puede decodificar (ni la decodificación por software
-tiene una posibilidad real con 4K 10-bit HEVC en una Pi 2). Arreglar
-solo el nombre no lo habría hecho reproducirse.
+el comando de arriba — un nombre mal puesto y un códec incompatible
+pueden ser ambos ciertos en el mismo archivo a la vez, así que arreglar
+uno no garantiza que el otro no siga siendo un problema.

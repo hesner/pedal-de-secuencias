@@ -7,6 +7,13 @@ date instead until that changes.
 
 ## [Unreleased]
 
+- **Fixed**: booting without the library USB dropped into systemd
+  emergency mode (no SSH, unrecoverable on a headless appliance) instead
+  of the local standby fallback. Cause: the overlay filesystem's default
+  `recurse=1` wraps every mount (including `/media/usb`) in its own
+  overlay with no `nofail`, so a missing USB failed a boot-critical mount.
+  Fixed by setting `recurse=0` (root only) in `cmdline.txt` -- see
+  `systemd/README.md` section 4.
 - Added `LIBRARY.md` (en/es): how to name library USB folders/files, and
   the exact filename-spacing mistake (`A  - x.mov` vs `A - x.mov`) that
   fails completely silently -- found live while testing a Set 5 video

@@ -55,10 +55,6 @@ side of the dash.
 **This is the single easiest mistake to make**, and it fails completely
 silently -- no error anywhere, the footswitch just does nothing, because
 an unmatched filename looks identical to an intentionally empty slot.
-It has already happened once during this project's own testing: a file
-named `A  - IMG_0896.MOV` (two spaces before the dash, easy to type by
-accident) didn't play, with nothing in the log to explain why beyond
-"no file for track A (empty slot)".
 
 ```
 A - my song.mp3        <- correct
@@ -100,12 +96,6 @@ ffmpeg -i input.mov -c:v libx264 -pix_fmt yuv420p -vf scale=-2:1080 \
 
 If a video plays fine on a phone/computer but not through the pedal,
 check its codec (`ffmpeg -i <file>` shows it on the `Video:` line)
-before suspecting the filename, and re-encode with the command above.
-
-This exact situation already happened during this project's own testing
--- and compounded with the filename mistake above, on the very same
-file: `A  - IMG_0896.MOV` wasn't just misnamed, `ffmpeg -i` also showed
-it was `hevc (Main 10) ... 3840x2160, 59.94 fps` -- 4K, 10-bit, HEVC,
-60fps, every part of which is past what this hardware can decode (not
-even software decoding stands a real chance at 4K 10-bit HEVC on a
-Pi 2). Fixing the filename alone would not have made it play.
+before suspecting the filename, and re-encode with the command above --
+a wrong filename and the wrong codec can both be true of the same file
+at once, so fixing one doesn't guarantee the other isn't also a problem.
