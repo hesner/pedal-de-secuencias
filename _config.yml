@@ -1,0 +1,7 @@
+theme: jekyll-theme-cayman
+title: Chocolate Pi
+description: A Raspberry Pi-based MIDI footswitch controller for triggering live audio/video on stage
+show_downloads: false
+plugins:
+  - jekyll-relative-links
+  - jekyll-optional-front-matter
