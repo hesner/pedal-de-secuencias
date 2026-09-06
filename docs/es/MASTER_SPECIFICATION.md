@@ -32,9 +32,10 @@ Estas decisiones están cerradas. Claude puede pedir aclaraciones, pero no debe 
 | Interfaz de audio | Cualquier interfaz de audio USB compatible con la clase estándar (validada empíricamente con una Behringer U-PHORIA UM2 — ver TESTING.md) |
 | Controlador MIDI | Cualquier controlador MIDI USB estándar capaz de enviar Program Change 0-127, sin depender de funciones propietarias (arquitectura diseñada y validada empíricamente con un M-VAVE PD41 — ver sección 4, MAVAVE_ANALYSIS.md y TESTING.md) |
 | Salida de video | HDMI, exclusivamente para el público (no para monitoreo del músico) |
-| Audio | Reproducción de MP3 |
+| Audio | Reproducción de MP3 y WAV. Ambos son formatos de solo audio y se comportan igual: el video de standby sigue en loop en pantalla mientras suena el audio |
 | Video | MP4/MOV/MPEG, códec H.264 |
-| Sincronización audio-video | Los clips de video llevan su audio embebido en el mismo archivo (no son pistas separadas). Video y audio de un mismo clip **nunca deben desincronizarse**; esto es un requisito crítico, no solo deseable. El MP3 independiente (fila "Audio") es para elementos de audio-only de la biblioteca, sin relación con la sincronización de clips de video |
+| Sincronización audio-video | Los clips de video llevan su audio embebido en el mismo archivo (no son pistas separadas). Video y audio de un mismo clip **nunca deben desincronizarse**; esto es un requisito crítico, no solo deseable. Los archivos MP3/WAV independientes (fila "Audio") son para elementos de audio-only de la biblioteca, sin relación con la sincronización de clips de video |
+| Prioridad audio/video | **El audio siempre tiene prioridad sobre el video.** El audio nunca debe entrecortarse, saltar, ni atrasarse durante una presentación en vivo; el video puede congelarse o perder cuadros en su lugar si alguna vez hay que elegir entre los dos. El audio es el maestro de tiempo: el video se ajusta a él, nunca al revés (`mpv --video-sync=audio`, `src/core/player.py`) |
 | Modo de reposo | Video de standby (`standby.mp4`) en loop cuando no hay nada reproduciéndose |
 | Transición de video | Debe ser suave (sin cortes bruscos) entre clips y standby |
 | STOP | Es una acción global, de máxima prioridad, debe detener todo inmediatamente |
@@ -42,7 +43,7 @@ Estas decisiones están cerradas. Claude puede pedir aclaraciones, pero no debe 
 | Arquitectura | Modular, por capas (ver sección 3) |
 | Protocolo | MIDI estándar — ninguna función propietaria del controlador puede filtrarse al Core |
 | Futuro | Debe soportar reemplazar el controlador MIDI actual por otro sin tocar el Core; posible portal web de administración más adelante |
-| Licencia/visibilidad | Proyecto open source |
+| Licencia/visibilidad | Proyecto open source, licencia MIT -- máximamente permisiva, uso comercial permitido, sin copyleft |
 | Documentación | Bilingüe, español e inglés |
 | Roles | El usuario define arquitectura/especificación junto con Claude (chat); **Claude Code es el agente de implementación**. No hay otra herramienta de IA en el proyecto |
 | Entorno de desarrollo | Claude Code corre **nativo en Windows** (sin WSL2). Todo lo específico de hardware/OS (audio, MIDI, video, systemd) se prueba directamente contra la Raspberry Pi real vía SSH, no en un entorno Linux simulado en el PC |
@@ -78,7 +79,7 @@ Esto permite que en el futuro un controlador distinto (otro MIDI, una app móvil
 
 ---
 
-## 4. Paso previo obligatorio y decisión pendiente — Estrategia M-VAVE
+## 4. Paso previo obligatorio y decisión pendiente — Estrategia del controlador MIDI
 
 ### 4.0 Paso previo — Validar audio + video simultáneo en la Raspberry Pi real
 
@@ -93,13 +94,13 @@ La Raspberry Pi 2 es hardware limitado (quad-core Cortex-A7, 1GB RAM, USB 2.0 co
 
 Si esta prueba falla o muestra cortes/desincronización, repórtalo antes de continuar — puede cambiar decisiones de arquitectura más arriba (por ejemplo, si el video debe ser opcional o de menor resolución). No se debe avanzar a construir el resto del sistema sin este resultado documentado en `TESTING.md`.
 
-### 4.1–4.5 Decisión pendiente — Estrategia M-VAVE (tarea de análisis obligatoria)
+### 4.1–4.5 Decisión pendiente — Estrategia del controlador MIDI (tarea de análisis obligatoria)
 
 **No implementes el MIDI Engine antes de completar esta tarea.**
 
 Se te entregará (por separado, en otro mensaje/archivo) el manual de configuración del M-VAVE y una fotografía de su pantalla (display de 2 dígitos, tipo 7 segmentos).
 
-### 4.1 Qué debes analizar del M-VAVE
+### 4.1 Qué debes analizar del controlador
 
 - Modos MIDI disponibles.
 - Program Change: rango, comportamiento.
