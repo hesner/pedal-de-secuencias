@@ -7,6 +7,10 @@ date instead until that changes.
 
 ## [Unreleased]
 
+- Added `LIBRARY.md` (en/es): how to name library USB folders/files, and
+  the exact filename-spacing mistake (`A  - x.mov` vs `A - x.mov`) that
+  fails completely silently -- found live while testing a Set 5 video
+  that didn't play.
 - Project renamed from "Sequence Pedal" / "Pedal de Secuencias" to
   **Chocolate Pi** -- a proper product name (playing on the M-VAVE
   Chocolate foot controller + Raspberry Pi actually used) instead of a

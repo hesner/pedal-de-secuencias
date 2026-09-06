@@ -83,7 +83,10 @@ python3 -m unittest discover -s tests -v   # no hardware needed for this part
 The full step-by-step install -- library USB, the `systemd` service for
 automatic boot, and the read-only root filesystem -- is in
 [`systemd/README.md`](systemd/README.md), starting from prerequisites
-through to a locked-down appliance.
+through to a locked-down appliance. Once it's running, see
+[`LIBRARY.md`](LIBRARY.md) before organizing songs/videos on the library
+USB -- one easy-to-make filename mistake there fails completely
+silently.
 
 ## Project layout
 

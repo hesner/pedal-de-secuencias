@@ -9,6 +9,10 @@ fecha hasta que eso cambie.
 
 ## [Sin publicar]
 
+- Se agregó `LIBRARY.md` (en/es): cómo nombrar carpetas/archivos del USB
+  de biblioteca, y el error exacto de espaciado en el nombre de archivo
+  (`A  - x.mov` vs `A - x.mov`) que falla completamente en silencio —
+  encontrado en vivo probando un video del Set 5 que no se reproducía.
 - Proyecto renombrado de "Sequence Pedal" / "Pedal de Secuencias" a
   **Chocolate Pi** -- un nombre de producto propio (juego de palabras
   con el pedal M-VAVE Chocolate + la Raspberry Pi que realmente se usan)
