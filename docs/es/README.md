@@ -63,8 +63,8 @@ real del proyecto, no solo un resumen.
 ## Estado
 
 En uso activo y probado contra hardware real: una Raspberry Pi 2, una
-interfaz de audio USB Behringer, un controlador MIDI M-VAVE PD41, y un
-USB de biblioteca. Ver [`TESTING.md`](../../TESTING.md) para lo ya
+interfaz de audio USB Behringer U-PHORIA UM2, un controlador MIDI
+M-VAVE PD41, y un USB de biblioteca. Ver [`TESTING.md`](../../TESTING.md) para lo ya
 validado (sincronía audio/video, timing real de video en TV, seguridad
 ante cortes de energía) y [`MAVAVE_ANALYSIS.md`](../../MAVAVE_ANALYSIS.md)
 para el análisis empírico del controlador MIDI detrás del mapeo actual.

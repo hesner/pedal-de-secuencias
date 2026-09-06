@@ -58,8 +58,8 @@ evidence behind each one live in [`MASTER_SPECIFICATION.md`](MASTER_SPECIFICATIO
 ## Status
 
 Actively used and tested against real hardware: a Raspberry Pi 2, a
-Behringer USB audio interface, an M-VAVE PD41 MIDI controller, and a
-library USB drive. See [`TESTING.md`](TESTING.md) for what's been
+Behringer U-PHORIA UM2 USB audio interface, an M-VAVE PD41 MIDI
+controller, and a library USB drive. See [`TESTING.md`](TESTING.md) for what's been
 validated (audio/video sync, real-TV frame timing, power-loss safety)
 and [`MAVAVE_ANALYSIS.md`](MAVAVE_ANALYSIS.md) for the empirical MIDI
 controller analysis behind the current mapping.

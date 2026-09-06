@@ -9,7 +9,7 @@
 
 - **Hardware:** Raspberry Pi 2 Model B **Rev 1.1** (revision `a01041`, real SoC BCM2836 — `/proc/cpuinfo` reports "BCM2835" as the device tree's generic name, not the real chip). This revision is pure ARMv7, with no 64-bit support: choosing the 32-bit image isn't just a preference, it's the only one compatible with this exact board.
 - **Operating system:** Raspbian GNU/Linux 12 (bookworm), kernel `6.12.93+rpt-rpi-v7`. Confirmed genuinely headless (`systemctl get-default` → `multi-user.target`, no graphical compositor running) after reflashing with the correct Lite variant — the first attempt had mistakenly installed the desktop variant (`graphical.target` + `labwc` compositor), detected and fixed before this test.
-- **Audio interface:** Behringer (Texas Instruments PCM2902 chip, identifies itself as `USB Audio CODEC`).
+- **Audio interface:** Behringer U-PHORIA UM2 -- confirmed against the physical unit's label. Identifies itself on the USB bus as a plain Texas Instruments PCM2902 ("Burr-Brown from TI", "USB Audio CODEC" in `lsusb -v`/`aplay -l`), with no Behringer branding anywhere in the USB descriptor -- expected for this device, not a sign of the wrong interface being detected; Behringer's cheaper interfaces are known for shipping the component vendor's default USB strings unmodified.
 - **MIDI controller:** detected as `SINCO` (Jieli Technology chip) via `amidi -l` — very likely the M-VAVE or a controller from the same reference family.
 - **Library USB drive:** 7.6GB NTFS thumb drive, manually mounted **read-only** for this test (Lite doesn't ship with desktop automount).
 

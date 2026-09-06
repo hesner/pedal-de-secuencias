@@ -29,7 +29,7 @@ These decisions are closed. Claude may ask for clarification, but must not propo
 |---|---|
 | Base hardware | Raspberry Pi 2 |
 | Operating system | Raspberry Pi OS Legacy Lite (32-bit) |
-| Audio interface | USB Behringer |
+| Audio interface | Any class-compliant USB audio interface (empirically validated with a Behringer U-PHORIA UM2 — see TESTING.md) |
 | MIDI controller | Any standard USB MIDI controller capable of sending Program Change 0-127, without relying on proprietary features (architecture designed and empirically validated with an M-VAVE PD41 — see section 4, MAVAVE_ANALYSIS.md, and TESTING.md) |
 | Video output | HDMI, exclusively for the audience (not for the musician's monitoring) |
 | Audio | MP3 and WAV playback. Both are audio-only formats and behave identically: the standby video keeps looping on screen while the audio plays over it |

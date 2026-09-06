@@ -29,7 +29,7 @@ Estas decisiones están cerradas. Claude puede pedir aclaraciones, pero no debe 
 |---|---|
 | Hardware base | Raspberry Pi 2 |
 | Sistema operativo | Raspberry Pi OS Legacy Lite (32-bit) |
-| Interfaz de audio | USB Behringer |
+| Interfaz de audio | Cualquier interfaz de audio USB compatible con la clase estándar (validada empíricamente con una Behringer U-PHORIA UM2 — ver TESTING.md) |
 | Controlador MIDI | Cualquier controlador MIDI USB estándar capaz de enviar Program Change 0-127, sin depender de funciones propietarias (arquitectura diseñada y validada empíricamente con un M-VAVE PD41 — ver sección 4, MAVAVE_ANALYSIS.md y TESTING.md) |
 | Salida de video | HDMI, exclusivamente para el público (no para monitoreo del músico) |
 | Audio | Reproducción de MP3 |
