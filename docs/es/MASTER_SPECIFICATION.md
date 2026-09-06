@@ -229,7 +229,7 @@ No se debe saltar del paso 2 al 5. Toda propuesta de arquitectura o de mapeo MID
 ## 7. Estructura de repositorio sugerida
 
 ```
-CHOCOLATE-PI/
+CHOCOLATEPI/
 │
 ├── PROJECT_REQUIREMENTS.md
 ├── ARCHITECTURE.md

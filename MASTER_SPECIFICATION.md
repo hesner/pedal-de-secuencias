@@ -230,7 +230,7 @@ Do not skip from step 2 to step 5. Every architecture or MIDI mapping proposal m
 ## 7. Suggested repository structure
 
 ```
-CHOCOLATE-PI/
+CHOCOLATEPI/
 │
 ├── PROJECT_REQUIREMENTS.md
 ├── ARCHITECTURE.md

@@ -76,7 +76,7 @@ journalctl -u pedal-core -f
 The unit as committed here uses placeholders -- `<YOUR_USER>` and
 `<YOUR_USB_UUID>` -- in `User=` and `ExecStart=`. Replace both with your
 own values before copying it in (this project's own reference deployment
-uses `User=hesner`, checkout path `/home/hesner/chocolate-pi`, and
+uses `User=hesner`, checkout path `/home/hesner/chocolatepi`, and
 UUID `07C1339846657D95`, matching the `/etc/fstab` entry from section 1).
 Edit them again later if the checkout path, user, or library USB drive
 ever changes.

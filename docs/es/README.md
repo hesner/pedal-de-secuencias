@@ -2,7 +2,7 @@
 
 *[Read in English](../../README.md)*
 
-[![Tests](https://github.com/hesner/chocolate-pi/actions/workflows/tests.yml/badge.svg)](https://github.com/hesner/chocolate-pi/actions/workflows/tests.yml)
+[![Tests](https://github.com/hesner/chocolatepi/actions/workflows/tests.yml/badge.svg)](https://github.com/hesner/chocolatepi/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE)
 
 ![Flujo de señal del hardware: pedalera M-VAVE PD41 hacia la Raspberry Pi 2, hacia una interfaz de audio USB Behringer y una pantalla HDMI, con un USB de biblioteca conectado](../images/hardware-blueprint.svg)
@@ -81,8 +81,8 @@ terceros, nada que instalar con `pip`), más `mpv`, `ffmpeg` y `ntfs-3g`
 en la propia Pi (`sudo apt install -y mpv ffmpeg ntfs-3g`).
 
 ```
-git clone https://github.com/hesner/chocolate-pi
-cd chocolate-pi
+git clone https://github.com/hesner/chocolatepi
+cd chocolatepi
 python3 -m unittest discover -s tests -v   # esta parte no necesita hardware
 ```
 
