@@ -47,11 +47,13 @@
     <circle cx="615" cy="220" r="7"/>
     <circle cx="605" cy="235" r="7"/>
     <circle cx="625" cy="235" r="7"/>
-    <!-- USB x2, right edge -->
-    <rect x="828" y="175" width="30" height="34"/>
-    <rect x="828" y="218" width="30" height="34"/>
+    <!-- USB x4, right edge (stacked, matching the real board) -->
+    <rect x="828" y="168" width="30" height="24"/>
+    <rect x="828" y="198" width="30" height="24"/>
+    <rect x="828" y="228" width="30" height="24"/>
+    <rect x="828" y="258" width="30" height="24"/>
     <!-- ethernet, right edge below USB -->
-    <rect x="826" y="262" width="34" height="30"/>
+    <rect x="826" y="292" width="34" height="26"/>
     <!-- HDMI, micro-USB power, AV jack: bottom edge -->
     <rect x="590" y="326" width="46" height="14"/>
     <circle cx="672" cy="333" r="8"/>
@@ -65,8 +67,8 @@
   <text x="672" y="356" fill="#7fb3e0" font-size="10" text-anchor="middle" stroke="none">HDMI</text>
   <text x="710" y="352" fill="#7fb3e0" font-size="9" text-anchor="middle" stroke="none">PWR</text>
   <text x="700" y="122" fill="#cfe8ff" font-size="16" text-anchor="middle" letter-spacing="1">RASPBERRY PI 2 MODEL B</text>
-  <text x="872" y="197" fill="#7fb3e0" font-size="10">USB ×2</text>
-  <text x="872" y="281" fill="#7fb3e0" font-size="10">ETH</text>
+  <text x="872" y="215" fill="#7fb3e0" font-size="10">USB ×4</text>
+  <text x="872" y="309" fill="#7fb3e0" font-size="10">ETH</text>
 
   <!-- ============ HDMI DISPLAY / TV ============ -->
   <g stroke="#cfe8ff" stroke-width="2" fill="none">
@@ -78,18 +80,6 @@
   <polygon points="1108,195 1108,235 1148,215" fill="#cfe8ff" stroke="none"/>
   <text x="1135" y="345" fill="#cfe8ff" font-size="15" text-anchor="middle" letter-spacing="1">HDMI DISPLAY / TV</text>
   <text x="1135" y="363" fill="#7fb3e0" font-size="11" text-anchor="middle">mpv --gpu-context=drm</text>
-
-  <!-- ============ USB HUB (6-port) ============ -->
-  <g stroke="#cfe8ff" stroke-width="2" fill="none">
-    <rect x="610" y="440" width="180" height="64" rx="4"/>
-    <rect x="628" y="480" width="20" height="12"/>
-    <rect x="663" y="480" width="20" height="12"/>
-    <rect x="698" y="480" width="20" height="12"/>
-    <rect x="733" y="480" width="20" height="12"/>
-    <rect x="768" y="480" width="20" height="12"/>
-  </g>
-  <text x="700" y="465" fill="#cfe8ff" font-size="13" text-anchor="middle" stroke="none">USB HUB</text>
-  <text x="700" y="524" fill="#7fb3e0" font-size="11" text-anchor="middle">6-PORT, POWERED (see TESTING.md)</text>
 
   <!-- ============ M-VAVE CHOCOLATE / PD41 ============ -->
   <g stroke="#cfe8ff" stroke-width="2" fill="none">
@@ -141,18 +131,34 @@
   <text x="1140" y="823" fill="#7fb3e0" font-size="11" text-anchor="middle">USB AUDIO I/F · BALANCED OUT → PA / MIXER</text>
 
   <!-- ============ CONNECTIONS ============ -->
+  <!-- All three USB peripherals plug directly into the Pi's own USB ports,
+       no external hub. The "USB hub" mentioned in TESTING.md's undervoltage
+       investigation is the Pi 2's own internal onboard hub controller (how
+       dmesg reports its USB topology), not a separate physical device. -->
+  <!-- Arrowheads point the way the meaningful data actually moves: MIDI and
+       the library read are inputs to the Pi (arrow points in); audio and
+       video are outputs from the Pi (arrow points out). See the legend. -->
   <g stroke="#cfe8ff" stroke-width="1.75" stroke-dasharray="6 5" fill="none" marker-end="url(#arrow)">
-    <path d="M843,253 C820,320 790,390 772,436"/>
     <path d="M672,341 C740,420 920,380 1006,222"/>
-    <path d="M340,655 C480,590 555,525 613,489"/>
-    <path d="M700,578 V508"/>
-    <path d="M787,489 C850,540 935,585 998,655"/>
+    <path d="M340,600 C380,420 600,260 826,180"/>
+    <path d="M703,596 C720,460 760,330 826,210"/>
+    <path d="M826,240 C900,380 970,480 1010,585"/>
   </g>
-  <text x="797" y="425" fill="#cfe8ff" font-size="12">USB</text>
   <text x="960" y="205" fill="#cfe8ff" font-size="12">HDMI</text>
-  <text x="440" y="565" fill="#cfe8ff" font-size="12" text-anchor="middle">USB MIDI</text>
-  <text x="722" y="545" fill="#cfe8ff" font-size="12">USB (ro)</text>
-  <text x="920" y="555" fill="#cfe8ff" font-size="12" text-anchor="middle">USB AUDIO</text>
+  <text x="480" y="420" fill="#cfe8ff" font-size="12" text-anchor="middle">USB MIDI</text>
+  <text x="740" y="460" fill="#cfe8ff" font-size="12" text-anchor="middle">USB (ro)</text>
+  <text x="930" y="440" fill="#cfe8ff" font-size="12" text-anchor="middle">USB AUDIO</text>
+
+  <!-- ============ LEGEND ============ -->
+  <g stroke="#cfe8ff" stroke-width="1" fill="none">
+    <rect x="1000" y="850" width="330" height="100"/>
+  </g>
+  <text x="1012" y="868" fill="#cfe8ff" font-size="12" letter-spacing="1">LEGEND</text>
+  <line x1="1012" y1="882" x2="1052" y2="882" stroke="#cfe8ff" stroke-width="1.75" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+  <text x="1060" y="886" fill="#7fb3e0" font-size="11">direction data actually flows</text>
+  <text x="1012" y="906" fill="#7fb3e0" font-size="11">→ into the Pi: MIDI in, library read</text>
+  <text x="1012" y="924" fill="#7fb3e0" font-size="11">→ out of the Pi: audio out, video out</text>
+  <text x="1012" y="942" fill="#7fb3e0" font-size="11">solid outlines: traced from real reference photos</text>
 
   <!-- ============ TITLE BLOCK ============ -->
   <g stroke="#cfe8ff" stroke-width="1" fill="none">
@@ -164,7 +170,7 @@
   </g>
   <text x="82" y="868" fill="#cfe8ff" font-size="13" letter-spacing="1">PROJECT: SEQUENCE PEDAL / PEDAL DE SECUENCIAS</text>
   <text x="82" y="893" fill="#7fb3e0" font-size="12">DWG: hardware-blueprint.svg</text>
-  <text x="320" y="893" fill="#7fb3e0" font-size="12">REV: 2.0</text>
+  <text x="320" y="893" fill="#7fb3e0" font-size="12">REV: 3.0</text>
   <text x="82" y="918" fill="#7fb3e0" font-size="12">LICENSE: MIT</text>
   <text x="320" y="918" fill="#7fb3e0" font-size="12">DATE: 2026-09-05</text>
   <text x="82" y="943" fill="#7fb3e0" font-size="12">github.com/hesner/pedal-de-secuencias</text>
