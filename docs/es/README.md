@@ -88,7 +88,7 @@ python3 -m unittest discover -s tests -v   # esta parte no necesita hardware
 
 La instalación completa paso a paso —USB de biblioteca, servicio de
 `systemd` para arranque automático, y sistema de archivos raíz de solo
-lectura— está en [`systemd/README.md`](../../systemd/README.md), desde
+lectura— está en [`systemd/README.md`](systemd/README.md), desde
 los prerequisitos hasta un aparato completamente blindado. Una vez esté
 corriendo, revisa [`LIBRARY.md`](LIBRARY.md) antes de organizar
 canciones/videos en el USB de biblioteca — un error de nombre de archivo

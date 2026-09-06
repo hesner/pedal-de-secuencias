@@ -1,5 +1,7 @@
 # Automatic boot setup
 
+*[Leer en español](../docs/es/systemd/README.md)*
+
 Makes the pedal start playing (standby loop, listening for the MIDI
 controller) automatically when the Raspberry Pi is powered on, with no
 screen or keyboard needed (section 1 of `MASTER_SPECIFICATION.md`).
