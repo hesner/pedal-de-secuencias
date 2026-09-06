@@ -177,6 +177,14 @@ The architecture and Mapper resulting from this analysis (`src/mapper/`) are des
 
 ---
 
+**Sections 5-9 switch registers**: everything above this line is
+architecture and product decisions. From here on, this document
+documents the *development process* -- how this project was actually
+built through an AI coding agent (Claude Code) -- kept for transparency,
+not because a contributor or user needs it to understand or run the
+system. Skip ahead to `TESTING.md` or `LIBRARY.md` if that's what you're
+after.
+
 ## 5. What Claude can do autonomously vs. what requires approval
 
 ### Autonomous (no permission needed)

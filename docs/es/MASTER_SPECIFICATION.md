@@ -177,6 +177,14 @@ La arquitectura y el Mapper resultantes de este análisis (`src/mapper/`) están
 
 ---
 
+**Las secciones 5-9 cambian de registro**: todo lo de arriba es
+arquitectura y decisiones de producto. De aquí en adelante, este
+documento describe el *proceso de desarrollo* — cómo se construyó
+realmente este proyecto a través de un agente de código con IA (Claude
+Code) — se mantiene por transparencia, no porque un colaborador o
+usuario lo necesite para entender o correr el sistema. Salta a
+`TESTING.md` o `LIBRARY.md` si eso es lo que buscas.
+
 ## 5. Qué puede hacer Claude autónomamente vs. qué requiere aprobación
 
 ### Autónomo (sin pedir permiso)
