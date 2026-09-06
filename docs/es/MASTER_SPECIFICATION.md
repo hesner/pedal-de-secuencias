@@ -1,4 +1,4 @@
-# MASTER SPECIFICATION — Proyecto "Pedal de Secuencias"
+# MASTER SPECIFICATION — Proyecto "Chocolate Pi"
 
 **Este documento es el contrato de Claude con este proyecto.** Define qué se debe construir, qué decisiones ya están aprobadas y no se deben cuestionar sin evidencia, qué decisiones están pendientes de investigación, cómo debe ser el flujo de trabajo entre nosotros y el agente, y cómo se revisan las decisiones a medida que aparece evidencia real (sección 9).
 
@@ -229,7 +229,7 @@ No se debe saltar del paso 2 al 5. Toda propuesta de arquitectura o de mapeo MID
 ## 7. Estructura de repositorio sugerida
 
 ```
-PEDAL-DE-SECUENCIAS/
+CHOCOLATE-PI/
 │
 ├── PROJECT_REQUIREMENTS.md
 ├── ARCHITECTURE.md
@@ -259,7 +259,7 @@ Estos archivos no necesitan existir todos desde el día uno; se crean a medida q
 
 Una vez Claude Code esté instalado y corriendo dentro del repositorio, la primera instrucción (antes de tocar código) debe ser aproximadamente:
 
-> Este repositorio corresponde al proyecto Pedal de Secuencias. Lee MASTER_SPECIFICATION.md completo. No implementes nada todavía. Confirma que entendiste las decisiones aprobadas (sección 2), la arquitectura por capas obligatoria (sección 3) y el flujo de trabajo (sección 6). Señala cualquier contradicción, riesgo técnico o ambigüedad que encuentres.
+> Este repositorio corresponde al proyecto "Chocolate Pi". Lee MASTER_SPECIFICATION.md completo. No implementes nada todavía. Confirma que entendiste las decisiones aprobadas (sección 2), la arquitectura por capas obligatoria (sección 3) y el flujo de trabajo (sección 6). Señala cualquier contradicción, riesgo técnico o ambigüedad que encuentres.
 
 Cuando confirme, se le pide ejecutar primero la prueba de audio+video de la sección 4.0 vía SSH contra la Raspberry Pi real. Solo después de documentar ese resultado se le entrega el manual del M-VAVE y se le pide ejecutar el análisis de la sección 4.1 en adelante.
 

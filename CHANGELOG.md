@@ -7,6 +7,12 @@ date instead until that changes.
 
 ## [Unreleased]
 
+- Project renamed from "Sequence Pedal" / "Pedal de Secuencias" to
+  **Chocolate Pi** -- a proper product name (playing on the M-VAVE
+  Chocolate foot controller + Raspberry Pi actually used) instead of a
+  literal description. Repo, badges, and docs updated to match; GitHub
+  redirects the old repo URL automatically.
+
 ## 2026-09-05 -- Initial public release
 
 First open-source release. Actively used and validated against real

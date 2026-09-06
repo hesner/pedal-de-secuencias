@@ -1,4 +1,4 @@
-# MASTER SPECIFICATION — "Sequence Pedal" Project
+# MASTER SPECIFICATION — "Chocolate Pi" Project
 
 **This document is Claude's contract with this project.** It defines what must be built, which decisions are already approved and must not be questioned without evidence, which decisions are pending investigation, what the workflow between us and the agent must look like, and how decisions are reviewed as real evidence appears (section 9).
 
@@ -230,7 +230,7 @@ Do not skip from step 2 to step 5. Every architecture or MIDI mapping proposal m
 ## 7. Suggested repository structure
 
 ```
-PEDAL-DE-SECUENCIAS/
+CHOCOLATE-PI/
 │
 ├── PROJECT_REQUIREMENTS.md
 ├── ARCHITECTURE.md
@@ -260,7 +260,7 @@ These files don't all need to exist from day one; they get created as each area 
 
 Once Claude Code is installed and running inside the repository, the first instruction (before touching any code) should be roughly:
 
-> This repository corresponds to the "Sequence Pedal" project. Read MASTER_SPECIFICATION.md in full. Do not implement anything yet. Confirm that you understood the approved decisions (section 2), the mandatory layered architecture (section 3), and the workflow (section 6). Point out any contradiction, technical risk, or ambiguity you find.
+> This repository corresponds to the "Chocolate Pi" project. Read MASTER_SPECIFICATION.md in full. Do not implement anything yet. Confirm that you understood the approved decisions (section 2), the mandatory layered architecture (section 3), and the workflow (section 6). Point out any contradiction, technical risk, or ambiguity you find.
 
 Once confirmed, it is asked to first run the audio+video test from section 4.0 via SSH against the real Raspberry Pi. Only after documenting that result is it given the controller's manual and asked to carry out the analysis from section 4.1 onward.
 

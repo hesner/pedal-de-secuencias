@@ -1,5 +1,5 @@
 [Unit]
-Description=Pedal de Secuencias -- Core (MIDI-driven audio/video playback)
+Description=Chocolate Pi -- Core (MIDI-driven audio/video playback)
 # Ordering only, on purpose -- NOT RequiresMountsFor. That directive
 # creates a hard dependency: if the USB is ever unplugged while running,
 # systemd stops this whole service (an intentional stop, so Restart=
@@ -19,7 +19,7 @@ Type=simple
 #   <YOUR_USB_UUID>   your library USB's UUID (`sudo blkid /dev/sda1`), same
 #                     one used in the /etc/fstab entry from section 1 below
 # This project's own reference deployment uses User=hesner,
-# /home/hesner/pedal-de-secuencias, and UUID 07C1339846657D95 -- see
+# /home/hesner/chocolate-pi, and UUID 07C1339846657D95 -- see
 # systemd/README.md.
 User=<YOUR_USER>
 # --drm-mode left at its default (preferred, usually 60Hz) on purpose:
@@ -29,7 +29,7 @@ User=<YOUR_USER>
 # 60Hz, CPU usage was statistically the same -- while looking visibly
 # worse than 60Hz side by side (confirmed by the user watching both).
 # See TESTING.md.
-ExecStart=/usr/bin/python3 /home/<YOUR_USER>/pedal-de-secuencias/src/main.py --usb-root /media/usb --standby /media/usb/standby.mp4 --fallback-standby /home/<YOUR_USER>/pedal-assets/fallback-standby.mp4 --usb-uuid=<YOUR_USB_UUID> --log-file /home/<YOUR_USER>/pedal-core.log
+ExecStart=/usr/bin/python3 /home/<YOUR_USER>/chocolate-pi/src/main.py --usb-root /media/usb --standby /media/usb/standby.mp4 --fallback-standby /home/<YOUR_USER>/pedal-assets/fallback-standby.mp4 --usb-uuid=<YOUR_USB_UUID> --log-file /home/<YOUR_USER>/pedal-core.log
 # Appliance behavior (section 1 of MASTER_SPECIFICATION.md): no one is
 # available to restart this by hand if it exits -- e.g. the M-VAVE not
 # being enumerated yet at the exact moment this starts. Keep retrying

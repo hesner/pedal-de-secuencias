@@ -1,8 +1,8 @@
-# Sequence Pedal
+# Chocolate Pi
 
 *[Leer en español](docs/es/README.md)*
 
-[![Tests](https://github.com/hesner/pedal-de-secuencias/actions/workflows/tests.yml/badge.svg)](https://github.com/hesner/pedal-de-secuencias/actions/workflows/tests.yml)
+[![Tests](https://github.com/hesner/chocolate-pi/actions/workflows/tests.yml/badge.svg)](https://github.com/hesner/chocolate-pi/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ![Hardware signal flow: M-VAVE PD41 footswitch to Raspberry Pi 2, out to a Behringer USB audio interface and an HDMI display, with a library USB drive attached](docs/images/hardware-blueprint.svg)
@@ -75,8 +75,8 @@ packages, nothing to `pip install`), plus `mpv`, `ffmpeg`, and `ntfs-3g`
 on the Pi itself (`sudo apt install -y mpv ffmpeg ntfs-3g`).
 
 ```
-git clone https://github.com/hesner/pedal-de-secuencias
-cd pedal-de-secuencias
+git clone https://github.com/hesner/chocolate-pi
+cd chocolate-pi
 python3 -m unittest discover -s tests -v   # no hardware needed for this part
 ```
 

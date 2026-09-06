@@ -9,6 +9,12 @@ fecha hasta que eso cambie.
 
 ## [Sin publicar]
 
+- Proyecto renombrado de "Sequence Pedal" / "Pedal de Secuencias" a
+  **Chocolate Pi** -- un nombre de producto propio (juego de palabras
+  con el pedal M-VAVE Chocolate + la Raspberry Pi que realmente se usan)
+  en vez de una descripción literal. Repo, badges y documentación
+  actualizados; GitHub redirige automáticamente la URL vieja del repo.
+
 ## 2026-09-05 -- Primera publicación open source
 
 Primer release open source. En uso activo y validado contra hardware

@@ -24,8 +24,8 @@
     <line x1="1370" y1="945" x2="1390" y2="945"/><line x1="1380" y1="935" x2="1380" y2="955"/>
   </g>
 
-  <text x="60" y="70" fill="#cfe8ff" font-size="26" letter-spacing="3">SEQUENCE PEDAL — HARDWARE SIGNAL FLOW</text>
-  <text x="60" y="94" fill="#7fb3e0" font-size="14" letter-spacing="2">PEDAL DE SECUENCIAS · SCHEMATIC, TRACED FROM REFERENCE PHOTOS · NOT TO SCALE</text>
+  <text x="60" y="70" fill="#cfe8ff" font-size="26" letter-spacing="3">CHOCOLATE PI — HARDWARE SIGNAL FLOW</text>
+  <text x="60" y="94" fill="#7fb3e0" font-size="14" letter-spacing="2">SCHEMATIC, TRACED FROM REFERENCE PHOTOS · NOT TO SCALE</text>
 
   <!-- ============ RASPBERRY PI 2 MODEL B (left-center hub of the layout) ============ -->
   <g stroke="#cfe8ff" stroke-width="2" fill="none">
@@ -166,10 +166,10 @@
     <line x1="70" y1="925" x2="530" y2="925"/>
     <line x1="310" y1="875" x2="310" y2="950"/>
   </g>
-  <text x="82" y="868" fill="#cfe8ff" font-size="13" letter-spacing="1">PROJECT: SEQUENCE PEDAL / PEDAL DE SECUENCIAS</text>
+  <text x="82" y="868" fill="#cfe8ff" font-size="13" letter-spacing="1">PROJECT: CHOCOLATE PI</text>
   <text x="82" y="893" fill="#7fb3e0" font-size="12">DWG: hardware-blueprint.svg</text>
   <text x="320" y="893" fill="#7fb3e0" font-size="12">REV: 4.0</text>
   <text x="82" y="918" fill="#7fb3e0" font-size="12">LICENSE: MIT</text>
   <text x="320" y="918" fill="#7fb3e0" font-size="12">DATE: 2026-09-05</text>
-  <text x="82" y="943" fill="#7fb3e0" font-size="12">github.com/hesner/pedal-de-secuencias</text>
+  <text x="82" y="943" fill="#7fb3e0" font-size="12">github.com/hesner/chocolate-pi</text>
 </svg>
