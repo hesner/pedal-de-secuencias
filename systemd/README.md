@@ -4,13 +4,52 @@ Makes the pedal start playing (standby loop, listening for the MIDI
 controller) automatically when the Raspberry Pi is powered on, with no
 screen or keyboard needed (section 1 of `MASTER_SPECIFICATION.md`).
 
-Four pieces, applied in this order: the software this project depends
-on, an `/etc/fstab` entry so the library USB mounts on its own, a
-`systemd` service that runs `src/main.py`, and (as the final,
-deliberately-last step) a read-only overlay on the Pi's own root
-filesystem.
+Five pieces, applied in this order: flashing the OS and configuring its
+first boot, the software this project depends on, an `/etc/fstab` entry
+so the library USB mounts on its own, a `systemd` service that runs
+`src/main.py`, and (as the final, deliberately-last step) a read-only
+overlay on the Pi's own root filesystem.
 
-## 0. Software prerequisites
+## 0. Flash Raspberry Pi OS and configure first boot
+
+Using [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
+(official tool, Windows/macOS/Linux):
+
+1. **Choose OS** → "Raspberry Pi OS (other)" → **Raspberry Pi OS Lite
+   (Legacy, 32-bit)** -- what `MASTER_SPECIFICATION.md` names as this
+   project's base OS.
+2. **Choose storage** → your SD card.
+3. Before writing, click the gear icon (or press `Ctrl+Shift+X`) to open
+   the advanced options and set, in the same sitting:
+   - **Hostname**: this project's own reference deployment (and every
+     `ssh pedal` example in this repo's docs) uses `pedal`. Use whatever
+     you like, just substitute it mentally everywhere these docs say
+     `pedal`/`pedal.local`.
+   - **Enable SSH**, password authentication (or paste a public key if
+     you'd rather not use a password at all).
+   - **Username and password**: your choice, no fixed requirement --
+     whatever you set here becomes `<YOUR_USER>` in section 3
+     (`pedal-core.service`) later.
+   - **Configure WiFi** (SSID, password, country) if this Pi won't be on
+     Ethernet -- or skip it and use Ethernet instead, which is what this
+     project's own testing fell back to when WiFi got flaky (see
+     `TESTING.md`).
+   - Locale/timezone/keyboard layout as appropriate.
+4. Write, then move the card to the Pi and power it on. First boot takes
+   a minute or two longer than normal (partition resize, SSH host keys).
+5. From another machine on the same network:
+   ```
+   ssh <your-username>@<hostname>.local
+   ```
+   **`.local` (mDNS) resolution is not fully reliable in practice** --
+   this project hit it repeatedly during its own development (works
+   fine most of the time, occasionally just doesn't resolve for no
+   obvious reason, especially over WiFi or after the Pi's been moved to
+   a different physical spot). If it doesn't resolve, get the Pi's IP
+   from your router's DHCP client list instead and `ssh
+   <your-username>@<that-ip>`.
+
+## 1. Software prerequisites
 
 Raspberry Pi OS (this project was developed against Lite) already ships
 `python3`; install the rest:
@@ -31,7 +70,7 @@ sudo apt install -y mpv ffmpeg ntfs-3g
 No `requirements.txt`: the Python side of this project (`src/`) is
 standard-library only, deliberately, so there's nothing to `pip install`.
 
-## 1. Library USB — `/etc/fstab`
+## 2. Library USB — `/etc/fstab`
 
 Add a line like this (get the real UUID for your own USB drive with
 `sudo blkid /dev/sda1`, or whatever device it shows up as):
@@ -58,7 +97,7 @@ sudo mount -a
 mount | grep /media/usb
 ```
 
-## 2. The service — `pedal-core.service`
+## 3. The service — `pedal-core.service`
 
 ```
 sudo cp systemd/pedal-core.service /etc/systemd/system/
@@ -77,7 +116,7 @@ The unit as committed here uses placeholders -- `<YOUR_USER>` and
 `<YOUR_USB_UUID>` -- in `User=` and `ExecStart=`. Replace both with your
 own values before copying it in (this project's own reference deployment
 uses `User=hesner`, checkout path `/home/hesner/chocolatepi`, and
-UUID `07C1339846657D95`, matching the `/etc/fstab` entry from section 1).
+UUID `07C1339846657D95`, matching the `/etc/fstab` entry from section 2).
 Edit them again later if the checkout path, user, or library USB drive
 ever changes.
 
@@ -134,7 +173,7 @@ this is really used and was simplified away.
   picking up a library update made while off) always requires a reboot;
   there is no supported way to make it happen without one.
 
-## 3. Read-only root filesystem (final lock-down step)
+## 4. Read-only root filesystem (final lock-down step)
 
 Requirement: it must be safe to power the Pi off at any moment (pull the
 plug) without risking corruption of its own filesystem -- this appliance
@@ -182,7 +221,7 @@ sudo systemctl stop pedal-core
 ```
 
 SSH access is unaffected either way, regardless of what the service is
-doing. If the overlay filesystem (section 3) is active, note that
+doing. If the overlay filesystem (section 4) is active, note that
 `sudo` commands still work as usual -- only writes to `/` and
 `/boot/firmware` land in the RAM-backed overlay instead of the real SD
 card, they don't fail.

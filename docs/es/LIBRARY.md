@@ -84,35 +84,38 @@ ahí, en el `Set` correcto, con el show correcto activo), renombra el
 archivo para descartar un problema de espacios antes de asumir que es un
 problema de códec o de hardware.
 
-## Nota sobre códecs de video
+## Codificación recomendada para video grabado con el celular
 
 Los videos de las carpetas `Set` se decodifican por hardware (`mpv
---hwdec=v4l2m2m-copy` en la Raspberry Pi 2), que soporta **H.264** — el
-códec indicado en `MASTER_SPECIFICATION.md`. Un archivo `.mov` recién
-salido de un iPhone suele ser **HEVC/H.265** en vez de H.264 (depende de
-la configuración "Formatos" en Ajustes → Cámara de iOS), que esta ruta
-de decodificación por hardware no soporta. Si un video se ve bien en un
-teléfono/computador pero no a través del pedal, revisa su códec
-(`ffmpeg -i <archivo>` lo muestra en la línea `Video:`) antes de
-sospechar del nombre del archivo.
+--hwdec=v4l2m2m-copy` en la Raspberry Pi 2), que solo soporta **H.264**.
+Las apps de cámara —especialmente la del iPhone— vienen configuradas por
+defecto con ajustes que este hardware no puede tocar en absoluto. Antes
+de copiar metraje del celular a la biblioteca, re-codifícalo a:
 
-El ejemplo del doble espacio de arriba en realidad pasó junto con
-exactamente esto: el mismo archivo, incluso arreglando el nombre,
-tampoco se iba a reproducir, porque `ffmpeg -i` muestra que es `hevc
-(Main 10) ... 3840x2160, 59.94 fps` — 4K, 10-bit, HEVC, 60fps. Cada
-parte de eso está por encima de lo que este hardware puede decodificar
-(H.264 es el único códec decodificado por hardware, y ni por software
-tiene una posibilidad real de mantener el ritmo un 4K 10-bit HEVC en una
-Pi 2). **Re-codifica antes de copiar a la biblioteca**, no solo renombres:
+| Ajuste | Recomendado | Por qué |
+|---|---|---|
+| Códec de video | H.264 (`libx264`) | El único códec que este hardware decodifica; fila "Video" de `MASTER_SPECIFICATION.md` |
+| Formato de píxel | `yuv420p` (8-bit) | El metraje HEVC/HDR de celular suele ser 10-bit; el decodificador de hardware espera 4:2:0 de 8-bit plano |
+| Resolución | 1080p máximo (`scale=-2:1080`) | La resolución objetivo de este proyecto; 4K solo agrega trabajo de decodificación sin ganancia visible en un TV alimentado a 1080p |
+| Bitrate de video | ~8-12 Mbps para 1080p | Buena calidad de sobra para un clip corto. Esta **no** es la situación del video de standby (la salida de `scripts/generate_fallback_standby.sh` y el `standby.mp4` real están codificados mucho más ligero, alrededor de 1.8 Mbps) — el standby está en loop durante todo el show y su tamaño de archivo sí importa; una canción/video individual en el USB de biblioteca no tiene esa restricción, así que no hay razón para escatimarle bitrate también |
+| Códec de audio | AAC, 44.1 u 48kHz, estéreo | `Player` fuerza 48kHz/estéreo en la salida sin importar el origen, así que la fuente solo necesita ser un stream AAC normal, no una tasa de muestreo específica |
+| Contenedor | `.mp4` | Sin importar la extensión original del archivo — un origen `.mov` se codifica bien a salida `.mp4` |
 
 ```
 ffmpeg -i entrada.mov -c:v libx264 -pix_fmt yuv420p -vf scale=-2:1080 \
-       -c:a aac -b:a 192k -movflags +faststart "A - nombre de canción.mp4"
+       -b:v 10M -c:a aac -b:a 192k -movflags +faststart "A - nombre de canción.mp4"
 ```
 
-`-pix_fmt yuv420p` importa más de lo usual acá — es lo que baja el HDR
-de 10-bit al formato plano de 8-bit que espera el decodificador de
-hardware. `scale=-2:1080` lo limita a 1080p (la resolución objetivo de
-este proyecto); quita esa bandera solo si el origen ya es 1080p o menor.
-Exporta directo como `.mp4` con el patrón correcto de `<Letra> - nombre`,
-así este paso tampoco puede reintroducir el error de espaciado de arriba.
+Si un video se ve bien en un teléfono/computador pero no a través del
+pedal, revisa su códec (`ffmpeg -i <archivo>` lo muestra en la línea
+`Video:`) antes de sospechar del nombre del archivo, y re-codifica con
+el comando de arriba.
+
+Esta situación exacta ya pasó durante las pruebas de este mismo
+proyecto —y se combinó con el error de nombre de arriba, en el mismo
+archivo—: `A  - IMG_0896.MOV` no solo estaba mal nombrado, `ffmpeg -i`
+también mostró que era `hevc (Main 10) ... 3840x2160, 59.94 fps` — 4K,
+10-bit, HEVC, 60fps, cada parte de lo cual está por encima de lo que
+este hardware puede decodificar (ni la decodificación por software
+tiene una posibilidad real con 4K 10-bit HEVC en una Pi 2). Arreglar
+solo el nombre no lo habría hecho reproducirse.

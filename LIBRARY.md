@@ -77,33 +77,35 @@ there, right `Set` folder, right show active), rename the file to
 double-check spacing first before assuming it's a codec or hardware
 problem.
 
-## Video codec note
+## Recommended encoding for phone-sourced video
 
 `Set` folder videos are decoded in hardware (`mpv --hwdec=v4l2m2m-copy`
-on the Raspberry Pi 2), which supports **H.264** -- the codec named in
-`MASTER_SPECIFICATION.md`. A `.mov` file straight off an iPhone is often
-**HEVC/H.265** instead of H.264 (depends on the camera's "Formats"
-setting under iOS Settings → Camera), which this hardware decode path
-does not support. If a video plays fine on a phone/computer but not
-through the pedal, check its codec (`ffmpeg -i <file>` shows it on the
-`Video:` line) before suspecting the filename.
+on the Raspberry Pi 2), which only supports **H.264**. Camera apps --
+especially iPhone's -- default to settings this hardware can't touch at
+all. Before copying phone footage into the library, re-encode it to:
 
-The double-space example above actually happened together with exactly
-this: the same file, once the filename is fixed, still won't play,
-because `ffmpeg -i` shows it's `hevc (Main 10) ... 3840x2160, 59.94 fps`
--- 4K, 10-bit, HEVC, 60fps. Every part of that is past what this
-hardware can decode (H.264 is the only hardware-decoded codec, and even
-in software, 4K 10-bit HEVC has no realistic chance of keeping up on a
-Pi 2). **Re-encode before copying to the library**, not just rename:
+| Setting | Recommended | Why |
+|---|---|---|
+| Video codec | H.264 (`libx264`) | The only codec this hardware decodes; `MASTER_SPECIFICATION.md`'s "Video" row |
+| Pixel format | `yuv420p` (8-bit) | Phone HEVC/HDR footage is often 10-bit; the hardware decoder expects plain 8-bit 4:2:0 |
+| Resolution | 1080p max (`scale=-2:1080`) | This project's target output resolution; 4K just adds decode work for no visible gain on an HDMI TV fed 1080p |
+| Video bitrate | ~8-12 Mbps for 1080p | Comfortably good quality for a short clip. This is **not** the standby video's situation (`scripts/generate_fallback_standby.sh`'s output and the real `standby.mp4` are both encoded far leaner, around 1.8 Mbps) -- standby loops for the entire show and its file size actually matters; an individual song/video clip on the library USB doesn't have that constraint, so there's no reason to starve it on bitrate too |
+| Audio codec | AAC, 44.1 or 48kHz, stereo | `Player` re-forces 48kHz/stereo on output regardless of the source, so the source just needs to be a normal AAC stream, not a specific sample rate |
+| Container | `.mp4` | Regardless of the source's original extension -- a `.mov` input encodes to a `.mp4` output fine |
 
 ```
 ffmpeg -i input.mov -c:v libx264 -pix_fmt yuv420p -vf scale=-2:1080 \
-       -c:a aac -b:a 192k -movflags +faststart "A - song name.mp4"
+       -b:v 10M -c:a aac -b:a 192k -movflags +faststart "A - song name.mp4"
 ```
 
-`-pix_fmt yuv420p` matters even more than usual here -- it's what drops
-the 10-bit HDR down to the plain 8-bit format the hardware decoder
-expects. `scale=-2:1080` caps it at 1080p (this project's target
-resolution); drop that flag only if the source is already 1080p or
-smaller. Output as `.mp4` directly under the right `<Letter> - name`
-pattern, so this step also can't reintroduce the spacing mistake above.
+If a video plays fine on a phone/computer but not through the pedal,
+check its codec (`ffmpeg -i <file>` shows it on the `Video:` line)
+before suspecting the filename, and re-encode with the command above.
+
+This exact situation already happened during this project's own testing
+-- and compounded with the filename mistake above, on the very same
+file: `A  - IMG_0896.MOV` wasn't just misnamed, `ffmpeg -i` also showed
+it was `hevc (Main 10) ... 3840x2160, 59.94 fps` -- 4K, 10-bit, HEVC,
+60fps, every part of which is past what this hardware can decode (not
+even software decoding stands a real chance at 4K 10-bit HEVC on a
+Pi 2). Fixing the filename alone would not have made it play.
